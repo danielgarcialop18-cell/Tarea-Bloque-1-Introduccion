@@ -1,0 +1,3 @@
+class BaseExtractor:
+    def history(self, symbol: str, start: str | None = None, end: str | None = None):
+        raise NotImplementedError("Implementa este método en tu extractor concreto.")
