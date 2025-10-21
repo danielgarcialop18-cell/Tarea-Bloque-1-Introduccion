@@ -1,4 +1,5 @@
-# normalizer.py
+import pandas as pd
+
 from datetime import datetime
 from dateutil import parser
 
@@ -29,7 +30,10 @@ class Normalizer:
                 "ticker": ticker,
                 "source": "alphavantage",
             })
-        return sorted(out, key=lambda x: x["date"])
+        df = pd.DataFrame(sorted(out, key=lambda x: x["date"]))
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date")
+        return df
 
     def normalize_marketstack_eod(self, raw: dict):
         data = raw.get("data", [])
@@ -45,7 +49,10 @@ class Normalizer:
                 "ticker": r.get("symbol"),
                 "source": "marketstack",
             })
-        return sorted(out, key=lambda x: x["date"])
+        df = pd.DataFrame(sorted(out, key=lambda x: x["date"]))
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date")
+        return df
 
     def normalize_twelvedata_timeseries(self, raw: dict, ticker: str):
         vals = raw.get("values", [])
@@ -61,4 +68,7 @@ class Normalizer:
                 "ticker": ticker,
                 "source": "twelvedata",
             })
-        return sorted(out, key=lambda x: x["date"])
+        df = pd.DataFrame(sorted(out, key=lambda x: x["date"]))
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date")
+        return df
