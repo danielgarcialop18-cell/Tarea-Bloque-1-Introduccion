@@ -43,6 +43,7 @@ Esto garantiza coherencia y facilita la escalabilidad del proyecto: si en el fut
 
 ## 🌍 Clase AlphaVantageExtractor
 - URL: https://www.alphavantage.co/query
+
 **Parámetros principales:**
 - `symbol`: código del activo
 - `interval`: intervalo de tiempo (por ejemplo, `"1day"`)
