@@ -18,13 +18,13 @@ En este módulo se extraerá la información de distintas acciones, índices o d
 # 🎯 Objetivo general del diseño
 Pese a que las APIs financieras ofrezcan información similar, utilizan nomenclaturas, parámetros y formatos distintos.
 Para unificar el acceso y mantener el código ordenado, se ha diseñado un sistema basado en clases independientes para cada una de las APIs que heredan de una clase común.
-'''bash
+```bash
 BaseExtractor
 │
 ├── AlphaVantageExtractor
 ├── MarketStackExtractor
 └── TwelveDataExtractor
-'''
+```
 De esta forma todos los extractores:
 - Comparten la misma interfaz (history(symbol, start, end))
 - Se comportan igual desde fuera
