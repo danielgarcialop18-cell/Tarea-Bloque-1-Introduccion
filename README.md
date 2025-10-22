@@ -44,6 +44,8 @@ Esto garantiza coherencia y facilita la escalabilidad del proyecto: si en el fut
 ## 🌍 Clase AlphaVantageExtractor
 - URL: https://www.alphavantage.co/query
 
+A continuación, se van a mostrar los parámetros que hay que usar a la hora de llamar a la API desde el código, estos se especifican en la documentación de cada API.
+
 **Parámetros principales (sacados de la documentación oficial):**
 - `symbol`: código del activo
 - `interval`: intervalo de tiempo (por ejemplo, `"1day"`)
