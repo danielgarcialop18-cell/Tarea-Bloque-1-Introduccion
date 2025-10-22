@@ -6,10 +6,10 @@ class MarketStackExtractor(BaseExtractor):
     def __init__(self, apikey: str):
         self.apikey = apikey
 
-    def history(self, symbol: str, start: str | None = None, end: str | None = None):
+    def entrada(self, ticker: str, start: str | None = None, end: str | None = None):
         params = {
             "access_key": self.apikey,
-            "symbols": symbol,
+            "symbols": ticker,
             "date_from": start,
             "date_to": end,
             "limit": 1000,

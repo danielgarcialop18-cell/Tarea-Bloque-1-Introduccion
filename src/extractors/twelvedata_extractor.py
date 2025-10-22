@@ -6,7 +6,7 @@ class TwelveDataExtractor(BaseExtractor):
     def __init__(self, apikey: str):
         self.apikey = apikey
 
-    def history(self, symbol: str, start: str | None = None, end: str | None = None):
+    def entrada(self, symbol: str, start: str | None = None, end: str | None = None):
         params = {
             "symbol": symbol,
             "interval": "1day",
