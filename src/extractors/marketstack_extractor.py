@@ -17,3 +17,4 @@ class MarketStackExtractor(BaseExtractor):
         r = requests.get(self.BASE, params=params, timeout=30)
         r.raise_for_status()
         return r.json()
+    
