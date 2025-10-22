@@ -6,7 +6,7 @@ class AlphaVantageExtractor(BaseExtractor):
     def __init__(self, apikey: str):
         self.apikey = apikey
 
-    def entrada(self, ticker: str, start: str | None = None, end: str | None = None):
+    def history(self, ticker: str, start: str | None = None, end: str | None = None):
         params = {
             "function": "TIME_SERIES_DAILY",
             "Ticker": ticker,
