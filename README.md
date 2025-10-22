@@ -63,3 +63,27 @@ El JSON recibido tiene esta forma:
   }
 }
 ```
+
+## 💼 Clase MarketStackExtractor
+- URL: http://api.marketstack.com/v1/eod
+
+**Parámetros principales:**
+- `access_key`: APIkey
+- `symbols`: código del activo
+- `date_from / date_to`: rango de fechas
+- `limit`: cantidad máxima de registros a devolver
+
+A diferencia de AlphaVantage, MarketStack sí permite filtrar por fechas directamente en la solicitud.
+Los datos se devuelven bajo la clave `data` y ya incluyen información diaria (EOD — End Of Day).
+
+El JSON recibido tiene esta forma:
+
+```bash
+{
+  "pagination": {...},
+  "data": [
+    {"date": "2024-01-01", "symbol": "AAPL", "open": 190.00, "high": 192.30, "low": 189.50, "close": 191.80, "volume": 10234500},
+    ...
+  ]
+}
+```
