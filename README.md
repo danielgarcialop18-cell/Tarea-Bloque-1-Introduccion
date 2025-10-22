@@ -87,3 +87,29 @@ El JSON recibido tiene esta forma:
   ]
 }
 ```
+
+## 📊 Clase TwelveDataExtractor
+- URL: https://api.twelvedata.com/time_series
+
+**Parámetros principales**
+- `symbol`: código del activo
+- `interval`: "1day", "1h", "15min", etc.
+- `outputsize`: número máximo de datos (por defecto 5000)
+- `start_date / end_date`: fechas opcionales
+- `apikey`: clave de acceso
+
+TwelveData es una API flexible que permite obtener tanto datos diarios como intradía.
+En este proyecto se usa el intervalo `1day` para mantener consistencia con las otras fuentes.
+En este caso el contenido JSON llega bajo la clave `values`.
+
+El JSON recibido tiene esta forma:
+
+```bash
+{
+  "meta": {"symbol": "AAPL", "interval": "1day", "currency": "USD"},
+  "values": [
+    {"datetime": "2024-01-01", "open": "190.00", "high": "192.30", "low": "189.50", "close": "191.80", "volume": "12345678"},
+    ...
+  ]
+}
+```
