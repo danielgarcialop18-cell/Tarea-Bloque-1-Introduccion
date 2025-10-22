@@ -44,7 +44,7 @@ Esto garantiza coherencia y facilita la escalabilidad del proyecto: si en el fut
 ## 🌍 Clase AlphaVantageExtractor
 - URL: https://www.alphavantage.co/query
 
-**Parámetros principales:**
+**Parámetros principales (sacados de la documentación oficial):**
 - `symbol`: código del activo
 - `interval`: intervalo de tiempo (por ejemplo, `"1day"`)
 - `outputsize`: número máximo de registros
@@ -67,7 +67,7 @@ El JSON recibido tiene esta forma:
 ## 💼 Clase MarketStackExtractor
 - URL: http://api.marketstack.com/v1/eod
 
-**Parámetros principales:**
+**Parámetros principales (sacados de la documentación oficial):**
 - `access_key`: APIkey
 - `symbols`: código del activo
 - `date_from / date_to`: rango de fechas
@@ -91,7 +91,7 @@ El JSON recibido tiene esta forma:
 ## 📊 Clase TwelveDataExtractor
 - URL: https://api.twelvedata.com/time_series
 
-**Parámetros principales**
+**Parámetros principales (sacados de la documentación oficial):**
 - `symbol`: código del activo
 - `interval`: "1day", "1h", "15min", etc.
 - `outputsize`: número máximo de datos (por defecto 5000)

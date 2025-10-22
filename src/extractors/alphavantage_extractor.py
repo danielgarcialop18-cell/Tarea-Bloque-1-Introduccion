@@ -9,7 +9,7 @@ class AlphaVantageExtractor(BaseExtractor):
     def history(self, ticker: str, start: str | None = None, end: str | None = None):
         params = {
             "function": "TIME_SERIES_DAILY",
-            "Ticker": ticker,
+            "symbol": ticker,
             "apikey": self.apikey,
             "outputsize": "full",
         }
