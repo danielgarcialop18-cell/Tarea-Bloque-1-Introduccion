@@ -30,11 +30,12 @@ def _k(name: str, cli_value: str | None) -> str | None:
     if cli_value:
         return cli_value
     env_map = {
-        "alpha": "856RYMKSG3VL20FM",
-        "marketstack": "f998365c6f9256e48f6f56b884812b26",
-        "twelvedata": "2f53db7863e94a6d8a48716a5486495d",
+        "alpha": "ALPHAVANTAGE_API_KEY",
+        "marketstack": "MARKETSTACK_API_KEY",
+        "twelvedata": "TWELVEDATA_API_KEY",
     }
     return os.getenv(env_map[name])
+
 
 
 def _print_section(title: str):

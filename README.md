@@ -115,3 +115,19 @@ El JSON recibido tiene esta forma:
   ]
 }
 ```
+
+# 🧮 Normalization
+
+## 🎯 Objetivo
+Dado que las APIs financieras (AlphaVantage, MarketStack y TwelveData) devuelven la información en formatos JSON distintos, con diferentes nombres de campos y estructuras; se crea el módulo `normalizer.py`, cuya función es convertir cualquier tipo de estructura JSON dada por las distintas APIs en un formato estándar para cada una de ellas.
+
+## 🧩 Problema que resuelve
+Cada API habla un idioma distinto, siendo:
+
+| API              | Estructura principal                                    | Nombres de campos              | Formato de fecha             |
+| ---------------- | ------------------------------------------------------- | ------------------------------ | ---------------------------- |
+| **AlphaVantage** | `"Time Series (Daily)" → { fecha: { "1. open": ... } }` | `"1. open"`, `"2. high"`, etc. | `"YYYY-MM-DD"`               |
+| **MarketStack**  | `"data" → [ { "open": ..., "close": ... } ]`            | `"open"`, `"close"`, etc.      | `"YYYY-MM-DDT00:00:00+0000"` |
+| **TwelveData**   | `"values" → [ { "open": ..., "close": ... } ]`          | `"open"`, `"close"`, etc.      | `"YYYY-MM-DD HH:MM:SS"`      |
+
+Como puede observarse, el **normalizador traduce todos estos formatos a un mismo estándar** de columnas y tipos de datos (`date`, `open`, `high`, `low`, `close`, `volume`, `ticker`, `source`).
