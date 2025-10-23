@@ -147,3 +147,41 @@ El formato de salida que se espera conseguir es el siguiente:
 | `source` | API de origen de los datos | `alphavantage` |
 
 ---
+Por lo que la estructura que se espera recibir será algo así:
+```bash
+              open    high     low   close     volume ticker        source
+date
+2025-10-14  246.60  248.84  244.70  247.77  35477986.0   AAPL  alphavantage
+2025-10-15  249.48  251.82  247.47  249.34  33893611.0   AAPL  alphavantage
+
+```
+
+## Clase Normalizer
+Contiene todos los métodos encargados de transformar el JSON bruto que devuelven las APIs en un formato común.
+Se crea el atributo global que define las columnas estándar que toda serie ha de tener:
+```bash
+STANDARD_COLS = ["date","open","high","low","close","volume","ticker","source"]
+
+```
+En esta clase se han creado una serie de métodos internos que realizan las funciones pertinentes.
+
+### 🕓 Método datetime `_dt(self, s)`
+Convierte cualquier valor de fecha (`str`, `datetime`, etc.) a un objeto `datetime` sin zona horaria. Unificando así el formato temporal de las tres APIs.
+```bash
+def _dt(self, s):
+    if isinstance(s, datetime):
+        return s
+    dt = parser.isoparse(s)
+    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+```
+
+### 📦 Método OHLCV `_finalize_ohlcv(self, rows)`
+Recibe una lista de diccionarios y devuelve un `DataFrame` limpio y ordenado por fecha.
+```bash
+df = pd.DataFrame(sorted(rows, key=lambda x: x["date"]))
+df["date"] = pd.to_datetime(df["date"])
+return df.set_index("date")
+
+```
+Centraliza los pasos finales comunes: ordenación, conversión de tipos y asignación del índice.
