@@ -10,7 +10,7 @@ La estructura que va a seguir este proyecto es la siguiente.
 - `src/plots/` → Visualización de gráficos
 - `src/cli.py` → Punto de entrada principal
 
-# 📦 Extractors
+# 📦 Extractors.py
 En este módulo se establece la conexión entre el proyecto y las distintas APIs a usar, que en este caso van a ser AlphaVantage, MarketStack y TwelveData.
 
 En este módulo se extraerá la información de distintas acciones, índices o divisas de las APIs en formato JSON y teniendo en cuenta como entregan los datos cada una de estas plataformas.
@@ -116,7 +116,7 @@ El JSON recibido tiene esta forma:
 }
 ```
 
-# 🧮 Normalization
+# 🧮 Normalization.py
 
 ## 🎯 Objetivo
 Dado que las APIs financieras (AlphaVantage, MarketStack y TwelveData) devuelven la información en formatos JSON distintos, con diferentes nombres de campos y estructuras; se crea el módulo `normalizer.py`, cuya función es convertir cualquier tipo de estructura JSON dada por las distintas APIs en un formato estándar para cada una de ellas.
@@ -131,3 +131,19 @@ Cada API habla un idioma distinto, siendo:
 | **TwelveData**   | `"values" → [ { "open": ..., "close": ... } ]`          | `"open"`, `"close"`, etc.      | `"YYYY-MM-DD HH:MM:SS"`      |
 
 Como puede observarse, el **normalizador traduce todos estos formatos a un mismo estándar** de columnas y tipos de datos (`date`, `open`, `high`, `low`, `close`, `volume`, `ticker`, `source`).
+
+## 📊 Formato de salida
+El formato de salida que se espera conseguir es el siguiente: 
+
+| Columna | Descripción | Ejemplo |
+|----------|--------------|----------|
+| `date`   | Fecha del registro (convertida a tipo `datetime` y usada como índice) | `2025-10-22` |
+| `open`   | Precio de apertura del día | `255.30` |
+| `high`   | Precio máximo del día | `260.00` |
+| `low`    | Precio mínimo del día | `252.50` |
+| `close`  | Precio de cierre del día | `258.70` |
+| `volume` | Volumen de negociación | `48900200` |
+| `ticker` | Símbolo del activo | `AAPL` |
+| `source` | API de origen de los datos | `alphavantage` |
+
+---
