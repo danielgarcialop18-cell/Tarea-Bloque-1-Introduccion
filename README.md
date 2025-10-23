@@ -236,3 +236,32 @@ for r in vals:
     })
 
 ```
+
+## 📉 Normalizador de otra tipología de datos (RSI)
+Este normalizador va a estar únicamente para las APIs AlphaVantage y TwelveData, ya que el indicador que quería usar era el RSI y en estas dos son las únicas APIs en las que se puede usar sin tener la versión de pago.
+
+### 🔵 Método AlphaVantage RSI `normalize_alphavantage_rsi(self, raw, ticker)`
+Extrae el RSI del bloque `"Technical Analysis: RSI"` de AlphaVantage.
+```bash
+block = raw.get("Technical Analysis: RSI", {})
+for d, obj in block.items():
+    val = float(obj.get("RSI", "nan"))
+    rows.append({"date": self._dt(d), "rsi": val, "ticker": ticker, "source": "alphavantage"})
+
+```
+Devuelve un DataFrame con columnas `rsi`, `ticker`, `source`, e `índice date`.
+
+### 🔵 Método TwelveData RSI `normalize_twelvedata_rsi(self, raw, ticker)`
+En TwelveData, el RSI llega en `"values"` con pares `{ "datetime": ..., "rsi": ... }`.
+```bash
+vals = raw.get("values", [])
+for r in vals:
+    rows.append({
+        "date": self._dt(r.get("datetime")),
+        "rsi": float(r.get("rsi", "nan")),
+        "ticker": ticker,
+        "source": "twelvedata"
+    })
+
+```
+Obteniendo una salida con igual formato al obtenido en AlphaVantage.
