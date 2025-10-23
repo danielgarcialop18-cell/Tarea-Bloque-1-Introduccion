@@ -6,6 +6,7 @@ import pandas as pd
 from .extractors.alphavantage_extractor import AlphaVantageExtractor
 from .extractors.marketstack_extractor import MarketStackExtractor
 from .extractors.twelvedata_extractor import TwelveDataExtractor
+from .extractors.runner import fetch_many
 from .normalization.normalizer import Normalizer
 
 
@@ -58,6 +59,8 @@ def main():
     p.add_argument("--apikey", default=None, help="API key (si no, se leerá de variable de entorno)")
     p.add_argument("--to-csv", default=None, help="Ruta de salida CSV (opcional)")
     p.add_argument("--to-json", default=None, help="Ruta de salida JSON (opcional)")
+    p.add_argument("--max-workers", type=int, default=4,
+                   help="Nº de descargas simultáneas (1 = secuencial)")
     args = p.parse_args()
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
@@ -65,35 +68,65 @@ def main():
     ex = _get_extractor(args.provider, apikey)
     norm = Normalizer()
 
+    # ---------- HISTÓRICO (OHLCV) ----------
     if args.datatype == "history":
-        dfs = []
-        for sym in symbols:
-            raw = ex.history(sym, start=args.start, end=args.end)
-            if args.provider == "alpha":
-                df = norm.normalize_alphavantage_daily(raw, sym)
-            elif args.provider == "marketstack":
-                df = norm.normalize_marketstack_eod(raw)
-            else:
-                df = norm.normalize_twelvedata_timeseries(raw, sym)
-            dfs.append(df)
-        out = _concat_or_single(dfs)
+        # Definimos cómo descargar 1 símbolo y cómo normalizarlo, según provider
+        fetch_one = lambda s: ex.history(s, start=args.start, end=args.end)
+        if args.provider == "alpha":
+            normalize_one = lambda raw, s: norm.normalize_alphavantage_daily(raw, s)
+        elif args.provider == "marketstack":
+            # MarketStack ya incluye el símbolo en el payload; s no es necesario, pero lo pasamos por firma
+            normalize_one = lambda raw, s: norm.normalize_marketstack_eod(raw)
+        else:  # twelvedata
+            normalize_one = lambda raw, s: norm.normalize_twelvedata_timeseries(raw, s)
 
-    else:  # indicator == "rsi"
-        dfs = []
-        for sym in symbols:
-            if args.provider == "alpha":
-                raw = ex.rsi(sym, time_period=args.time_period, interval="daily", series_type="close")
-                df = norm.normalize_alphavantage_rsi(raw, sym)
-            elif args.provider == "twelvedata":
-                raw = ex.rsi(sym, time_period=args.time_period, interval="1day")
-                df = norm.normalize_twelvedata_rsi(raw, sym)
-            else:
-                print("⚠️ MarketStack no ofrece RSI gratuito; omitiendo.", file=sys.stderr)
-                df = pd.DataFrame()
-            dfs.append(df)
-        out = _concat_or_single(dfs)
+        # Elegimos secuencial vs paralelo
+        if args.max_workers == 1:
+            out_by_symbol: dict[str, pd.DataFrame] = {}
+            for sym in symbols:
+                try:
+                    raw = fetch_one(sym)
+                    out_by_symbol[sym] = normalize_one(raw, sym)
+                except Exception as e:
+                    print(f"⚠️ Error con {sym}: {e}", file=sys.stderr)
+                    out_by_symbol[sym] = pd.DataFrame()
+        else:
+            out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
 
-    # Salida por pantalla
+        # Unimos todo en un único DataFrame (si te interesa una sola tabla)
+        out = _concat_or_single(list(out_by_symbol.values()))
+
+    # ---------- INDICADORES (RSI) ----------
+    else:
+        if args.indicator != "rsi":
+            raise SystemExit("Por ahora solo se implementa RSI en modo indicador.")
+        # Definimos fetch/normalize de RSI según provider
+        if args.provider == "alpha":
+            fetch_one = lambda s: ex.rsi(s, time_period=args.time_period, interval="daily", series_type="close")
+            normalize_one = lambda raw, s: norm.normalize_alphavantage_rsi(raw, s)
+        elif args.provider == "twelvedata":
+            fetch_one = lambda s: ex.rsi(s, time_period=args.time_period, interval="1day")
+            normalize_one = lambda raw, s: norm.normalize_twelvedata_rsi(raw, s)
+        else:
+            print("⚠️ MarketStack no ofrece RSI gratuito; omitiendo.", file=sys.stderr)
+            fetch_one = lambda s: {}
+            normalize_one = lambda raw, s: pd.DataFrame()
+
+        if args.max_workers == 1:
+            out_by_symbol: dict[str, pd.DataFrame] = {}
+            for sym in symbols:
+                try:
+                    raw = fetch_one(sym)
+                    out_by_symbol[sym] = normalize_one(raw, sym)
+                except Exception as e:
+                    print(f"⚠️ Error con {sym}: {e}", file=sys.stderr)
+                    out_by_symbol[sym] = pd.DataFrame()
+        else:
+            out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
+
+        out = _concat_or_single(list(out_by_symbol.values()))
+
+    # ---------- Salida por pantalla ----------
     if out is None or out.empty:
         print("⛔ No hay datos para mostrar.")
     else:
@@ -101,9 +134,13 @@ def main():
         print(out.head().to_string())
         print(f"\nFilas: {len(out)}")
         if "ticker" in out.columns:
-            print("Tickers en salida:", sorted(out["ticker"].dropna().unique().tolist()))
+            try:
+                tickers = sorted(out["ticker"].dropna().unique().tolist())
+                print("Tickers en salida:", tickers)
+            except Exception:
+                pass
 
-    # Persistencia opcional
+    # ---------- Persistencia opcional ----------
     if args.to_csv:
         out.to_csv(args.to_csv, index=True)
         print(f"💾 Guardado CSV en: {args.to_csv}")
@@ -114,3 +151,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
