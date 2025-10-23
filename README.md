@@ -185,3 +185,54 @@ return df.set_index("date")
 
 ```
 Centraliza los pasos finales comunes: ordenación, conversión de tipos y asignación del índice.
+
+## 💲 Normalizadores de precios (OHLCV) 
+Son los normalizadores para cada una de las APIs para obtener los datos OHLCV, también dentro de las clase normalizer.
+
+### 🧩 Método AlphaVantage `normalize_alphavantage_daily(self, raw, ticker)`
+Convierte el JSON de AlphaVantage a formato estándar.
+```bash
+for k in raw.keys():
+    if "Time Series" in k:
+        ts = raw[k]; break
+
+```
+AlphaVantage usa nombres como `"1. open"` o `"2. high"`, así que el método los renombra como se estableció al principio:
+```bash
+for d, row in ts.items():
+    out.append({
+        "date": self._dt(d),
+        "open": float(row.get("1. open")),
+        "high": float(row.get("2. high")),
+        ...
+    })
+
+```
+Sustituyen los nombres numéricos que da AlphaVantage por `open`, `high`, `low`, etc, y añade las columnas `ticker` y `source`.
+
+### 📈 Método MarketStack `normalize_marketstack_eod(self, raw)`
+MarketStack ya usa nombres simples (`open`, `close`, etc.) y devuelve los datos en una lista bajo la clave `"data"`.
+```bash
+data = raw.get("data", [])
+for r in data:
+    out.append({
+        "date": self._dt(r.get("date")),
+        "open": float(r["open"]) if r.get("open") else float("nan"),
+        ...
+    })
+
+```
+En este caso no se necestin traducir datos, sin embargo, algunas APIs como MarketStack a veces devuelven campos sin datos (como un día sin volumen o sin cierre), este `null` se convierte en `None`, y si se intenta hacer `float(None)` da error. Es por eso que si se detecta un `None`, se cambia por `Nan`, que es el valor numérico vacío que entiende pandas.
+
+### 💰 Método TwelveData `normalize_twelvedata_timeseries(self, raw, ticker)`
+TwelveData devuelve los datos bajo `"values"`. Su estructura es similar a MarketStack pero con campo `"datetime"`.
+```bash
+vals = raw.get("values", [])
+for r in vals:
+    out.append({
+        "date": self._dt(r.get("datetime")),
+        "open": float(r["open"]),
+        ...
+    })
+
+```
