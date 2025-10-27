@@ -281,7 +281,6 @@ Sus atributos principales son:
 - `source: str`: La API de origen (ej. "alphavantage").
 - `data: pd.DataFrame`: El DataFrame normalizado con los datos (OHLCV o RSI).
 ```bash
-# src/models/series.py
 
 @dataclass
 class PriceSeries:
@@ -290,12 +289,13 @@ class PriceSeries:
     data: pd.DataFrame
     start_date: Optional[datetime] = field(init=False)
     end_date: Optional[datetime] = field(init=False)
+    main_col: Optional[str] = field(init=False, default=None) # Columna principal (close o rsi)
+    mean_value: Optional[float] = field(init=False, default=float('nan'))
+    std_dev_value: Optional[float] = field(init=False, default=float('nan'))
 
-    def __post_init__(self):
-        # ... (lógica para calcular start_date y end_date)
 ```
-
-La clase utiliza `__post_init__` para calcular automáticamente las fechas de inicio y fin a partir del DataFrame.
+### Método `__post_init__(self)`
+La clase utiliza `__post_init__` para calcular automáticamente las fechas de inicio y fin, la media y la desviación típica a partir del DataFrame.
 
 De esta manera solucionamos varios problemas:
 - Los datos (`data`) y sus metadatos (`ticker`, `source`) viajan siempre solos en un mismo paquete.
@@ -362,4 +362,50 @@ def add_series(self, series: PriceSeries):
         # Lo guardamos en el diccionario, usando el ticker como clave
         self.assets[series.ticker] = series
         print(f"Activo {series.ticker} añadido a la cartera '{self.name}'.")
+```
+
+### 📅 Método retornos diarios `get_daily_returns(self, column: str = 'close')`
+Calcula los retornos porcentuales diarios (la rentabilidad de un día para otro) de la columna de cierre. Utiliza la función .`pct_change()` de Pandas, devolviendo una nueva `pd.Series` con las rentabilidades, donde el primer valor es `NaN`.
+```bash
+def get_daily_returns(self, column: str = 'close'):
+        
+        if column in self.data.columns:
+            return self.data[column].pct_change()
+        
+        print(f"Advertencia: Columna '{column}' no encontrada para calcular retornos.")
+        return None
+```
+
+### Método SMA `def calculate_sma(self, window_days: int = 20)`
+Calcula la Media Móvil Simple (SMA). Este método utiliza la función `.rolling(window=window_days).mean()` de `Pandas` sobre la `main_col`. `window_days` tiene un valor por defecto de 20.
+```bash
+def calculate_sma(self, window_days: int = 20):
+       
+        if self.main_col and len(self.data) >= window_days:
+            return self.data[self.main_col].rolling(window=window_days).mean()
+        
+        if not self.main_col:
+            print("Advertencia: No hay columna principal (close/rsi) para calcular SMA.")
+        else:
+            print(f"Advertencia: No hay suficientes datos ({len(self)}) para la ventana SMA ({window_days}).")
+        return None
+```
+
+### Método máximo y mínimo `def get_min_max(self)`
+Devuelve un diccionario con los valores máximo y mínimo de la `main_col` (precio o RSI), junto con las fechas exactas (`idxmin`, `idxmax`) en que ocurrieron esos valores.
+```bash
+def get_min_max(self):
+
+        if self.main_col:
+            min_val = self.data[self.main_col].min()
+            min_date = self.data[self.main_col].idxmin()
+            max_val = self.data[self.main_col].max()
+            max_date = self.data[self.main_col].idxmax()
+            return {
+                "min_value": min_val,
+                "min_date": min_date,
+                "max_value": max_val,
+                "max_date": max_date,
+            }
+        return None
 ```
