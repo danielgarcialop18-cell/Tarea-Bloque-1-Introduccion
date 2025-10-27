@@ -281,7 +281,7 @@ Sus atributos principales son:
 - `source: str`: La API de origen (ej. "alphavantage").
 - `data: pd.DataFrame`: El DataFrame normalizado con los datos (OHLCV o RSI).
 
-```python
+```bash
 # src/models/series.py
 
 @dataclass
@@ -294,3 +294,30 @@ class PriceSeries:
 
     def __post_init__(self):
         # ... (lógica para calcular start_date y end_date)
+```
+La clase utiliza `__post_init__` para calcular automáticamente las fechas de inicio y fin a partir del DataFrame.
+
+De esta manera solucionamos varios problemas:
+- Los datos (`data`) y sus metadatos (`ticker`, `source`) viajan siempre solos en un mismo paquete.
+- En lugar de un dataframe genérico, ahora tenemos una `dataclass` que es `PriceSeries`, que es un objeto con significado dentro del dominio de nuestro proyecto.
+- Esto nos permite añadir métodos útiles a la clase y sin ensuciar el `dataframe`, como los siguientes.
+
+### 📏 Método `__len__(self)`
+Este método nos permite saber el número de filas del `dataframe`. De esta forma nos permite escribir `len(mi_serie)` en lugar de `len(mi_serie.data)`.
+```bash
+def __len__(self) -> int:
+        return len(self.data)
+```
+
+### 📚 Método get_summary(self)
+Es un método que he creado para mostrar rápidamente la información del objeto sin necesidad de imprimir el `dataframe` entero.
+```bash
+def get_summary(self) -> str:
+        """Devuelve un resumen simple de la serie."""
+        if self.data.empty:
+            return f"Serie: {self.ticker} ({self.source}) - (Vacía)"
+        else:
+            return (f"Serie: {self.ticker} ({self.source}) | "
+                    f"Rango: {self.start_date.date()} a {self.end_date.date()} | "
+                    f"Registros: {len(self)}")
+```
