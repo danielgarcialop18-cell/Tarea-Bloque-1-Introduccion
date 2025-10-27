@@ -280,7 +280,6 @@ Sus atributos principales son:
 - `ticker: str`: El símbolo del activo (ej. "AAPL").
 - `source: str`: La API de origen (ej. "alphavantage").
 - `data: pd.DataFrame`: El DataFrame normalizado con los datos (OHLCV o RSI).
-
 ```bash
 # src/models/series.py
 
@@ -295,6 +294,7 @@ class PriceSeries:
     def __post_init__(self):
         # ... (lógica para calcular start_date y end_date)
 ```
+
 La clase utiliza `__post_init__` para calcular automáticamente las fechas de inicio y fin a partir del DataFrame.
 
 De esta manera solucionamos varios problemas:
