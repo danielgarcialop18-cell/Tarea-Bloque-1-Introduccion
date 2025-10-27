@@ -146,10 +146,10 @@ class Portfolio:
         print(f"Activo {series.ticker} añadido a la cartera '{self.name}'.")
 
     @property
-    def tickers(self) -> List[str]:
+    def tickers(self):
         """Devuelve la lista de tickers que hay en la cartera."""
         return list(self.assets.keys())
 
-    def __len__(self) -> int:
+    def __len__(self):
         """Devuelve cuántos activos (series) hay en la cartera."""
         return len(self.assets)
