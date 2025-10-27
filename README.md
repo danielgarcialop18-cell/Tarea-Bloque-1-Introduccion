@@ -265,3 +265,32 @@ for r in vals:
 
 ```
 Obteniendo una salida con igual formato al obtenido en AlphaVantage.
+
+# 📦 models.py
+Hasta ahora, la información normalizada de cada activo se devolvía como un `pd.DataFrame` genérico. Aunque es útil y se pueden ver los datos, esta forma no captura la identidad de la serie (que activo es y de donde proviene).
+
+Para inyectar coherencia y cohesión de datos en el proyecto, se encapsula el `DataFrame` normalizado y sus metadatos (`ticker`, `source`) dentro de un objeto de dominio que representa este concepto.
+
+Siguiendo el enunciado, se utilizan dataclasses de Python para crear estos objetos, ya que nos permiten definir "contenedores" de datos de forma limpia y concisa. Estos nuevos modelos residirán en `src/models/series.py`.
+
+## 📈 Clase PriceSeries
+Se define la `PriceSeries` como un `@dataclass` que representa la serie temporal de un único activo. Es la "ficha" individual de cada activo.
+
+Sus atributos principales son:
+- `ticker: str`: El símbolo del activo (ej. "AAPL").
+- `source: str`: La API de origen (ej. "alphavantage").
+- `data: pd.DataFrame`: El DataFrame normalizado con los datos (OHLCV o RSI).
+
+```python
+# src/models/series.py
+
+@dataclass
+class PriceSeries:
+    ticker: str
+    source: str
+    data: pd.DataFrame
+    start_date: Optional[datetime] = field(init=False)
+    end_date: Optional[datetime] = field(init=False)
+
+    def __post_init__(self):
+        # ... (lógica para calcular start_date y end_date)
