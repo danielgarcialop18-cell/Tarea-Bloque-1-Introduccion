@@ -309,7 +309,7 @@ def __len__(self) -> int:
         return len(self.data)
 ```
 
-### 📚 Método get_summary(self)
+### 📚 Método `get_summary(self)`
 Es un método que he creado para mostrar rápidamente la información del objeto sin necesidad de imprimir el `dataframe` entero.
 ```bash
 def get_summary(self) -> str:
@@ -320,4 +320,46 @@ def get_summary(self) -> str:
             return (f"Serie: {self.ticker} ({self.source}) | "
                     f"Rango: {self.start_date.date()} a {self.end_date.date()} | "
                     f"Registros: {len(self)}")
+```
+
+## 💼 Clase portfolio ¿Qué es una cartera?
+Una Cartera (`Portfolio`) es un objeto contenedor que agrupa una colección de uno o más objetos `PriceSeries`.
+
+Mientras que `PriceSeries` es la "ficha" de un activo, `Portfolio` es el "archivador" que guarda todas esas fichas.
+
+Se implementa también como un `@dataclass` con los siguientes atributos:
+
+- `name: str`: Un nombre para identificar la cartera.
+- `assets: Dict[str, PriceSeries]`: Un diccionario que almacena los objetos PriceSeries, usando el ticker como clave de acceso.
+- `weights: Optional[Dict[str, float]]`: Un diccionario opcional para definir el peso de cada activo dentro de la cartera.
+```bash
+@dataclass
+class Portfolio:
+    name: str
+    assets: Dict[str, PriceSeries] = field(default_factory=dict)
+    weights: Optional[Dict[str, float]] = None
+
+    def add_series(self, series: PriceSeries):
+        # ... (lógica para añadir una PriceSeries a self.assets)
+```
+
+### ➕​ Método `add_series(self, series: PriceSeries)`
+Este método toma un objeto `PriceSeries` completo (la "ficha") y lo guarda dentro del diccionario `self.assets` (el "archivador").
+
+Para organizar los datos, utiliza el `ticker` del activo (ej. "AAPL") como la clave del diccionario, y el objeto `PriceSeries` completo como el valor.
+
+El script `cli.py`, después de descargar y crear cada objeto `PriceSeries`, llama a `cartera.add_series(serie)` en un bucle para "llenar" la cartera con todos los activos solicitados.
+```bash
+def add_series(self, series: PriceSeries):
+        """
+        Método para añadir un objeto PriceSeries a la cartera.
+        """
+        # Comprobamos que lo que nos pasan es un PriceSeries
+        if not isinstance(series, PriceSeries):
+            print(f"Error: Solo se pueden añadir objetos PriceSeries a la cartera.")
+            return
+            
+        # Lo guardamos en el diccionario, usando el ticker como clave
+        self.assets[series.ticker] = series
+        print(f"Activo {series.ticker} añadido a la cartera '{self.name}'.")
 ```

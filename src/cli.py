@@ -8,7 +8,8 @@ from .extractors.marketstack_extractor import MarketStackExtractor
 from .extractors.twelvedata_extractor import TwelveDataExtractor
 from .extractors.runner import fetch_many
 from .normalization.normalizer import Normalizer
-
+# Importa las nuevas clases del modelo que creaste
+from .models.series import PriceSeries, Portfolio  # <--- CAMBIO
 
 def _get_extractor(provider: str, apikey: str):
     if provider == "alpha":
@@ -67,6 +68,9 @@ def main():
     apikey = _resolve_api_key(args.provider, args.apikey)
     ex = _get_extractor(args.provider, apikey)
     norm = Normalizer()
+    
+    # Esta variable contendrá el resultado de fetch_many: Dict[str, pd.DataFrame]
+    out_by_symbol: dict[str, pd.DataFrame] = {} # <--- CAMBIO (solo inicialización)
 
     # ---------- HISTÓRICO (OHLCV) ----------
     if args.datatype == "history":
@@ -75,14 +79,12 @@ def main():
         if args.provider == "alpha":
             normalize_one = lambda raw, s: norm.normalize_alphavantage_daily(raw, s)
         elif args.provider == "marketstack":
-            # MarketStack ya incluye el símbolo en el payload; s no es necesario, pero lo pasamos por firma
             normalize_one = lambda raw, s: norm.normalize_marketstack_eod(raw)
         else:  # twelvedata
             normalize_one = lambda raw, s: norm.normalize_twelvedata_timeseries(raw, s)
 
         # Elegimos secuencial vs paralelo
         if args.max_workers == 1:
-            out_by_symbol: dict[str, pd.DataFrame] = {}
             for sym in symbols:
                 try:
                     raw = fetch_one(sym)
@@ -92,9 +94,6 @@ def main():
                     out_by_symbol[sym] = pd.DataFrame()
         else:
             out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
-
-        # Unimos todo en un único DataFrame (si te interesa una sola tabla)
-        out = _concat_or_single(list(out_by_symbol.values()))
 
     # ---------- INDICADORES (RSI) ----------
     else:
@@ -113,7 +112,6 @@ def main():
             normalize_one = lambda raw, s: pd.DataFrame()
 
         if args.max_workers == 1:
-            out_by_symbol: dict[str, pd.DataFrame] = {}
             for sym in symbols:
                 try:
                     raw = fetch_one(sym)
@@ -123,32 +121,55 @@ def main():
                     out_by_symbol[sym] = pd.DataFrame()
         else:
             out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
+    
+    
+    # ---------- CREACIÓN DE OBJETOS Portfolio y PriceSeries ---------- # <--- CAMBIO (NUEVO BLOQUE)
+    
+    # 1. Creamos la cartera (el "archivador")
+    portfolio_name = f"Cartera CLI ({args.provider} - {args.datatype})"
+    cartera = Portfolio(name=portfolio_name)
+    
+    # 2. Iteramos sobre los DataFrames descargados
+    for sym, df in out_by_symbol.items():
+        if df is not None and not df.empty:
+            # Obtenemos la fuente del propio DataFrame (gracias al normalizador)
+            source = df['source'].iloc[0] if 'source' in df.columns else args.provider
+            
+            # Creamos la "ficha" (PriceSeries)
+            serie = PriceSeries(ticker=sym, source=source, data=df)
+            
+            # Añadimos la "ficha" al "archivador"
+            cartera.add_series(serie) # Esto imprimirá "Activo ... añadido a la cartera ..."
 
-        out = _concat_or_single(list(out_by_symbol.values()))
+    # ---------- Unimos todo en un DataFrame para exportar (opcional) ----------
+    # Mantenemos esta lógica para que --to-csv y --to-json sigan funcionando
+    out = _concat_or_single(list(out_by_symbol.values()))
 
-    # ---------- Salida por pantalla ----------
-    if out is None or out.empty:
-        print("⛔ No hay datos para mostrar.")
+
+    # ---------- Salida por pantalla (Modificada) ---------- # <--- CAMBIO (BLOQUE MODIFICADO)
+    
+    if not cartera.assets: # Comprobamos si la cartera está vacía
+        print("\n⛔ No hay datos para mostrar.")
     else:
-        print("📊 Datos normalizados (head):\n")
-        print(out.head().to_string())
-        print(f"\nFilas: {len(out)}")
-        if "ticker" in out.columns:
-            try:
-                tickers = sorted(out["ticker"].dropna().unique().tolist())
-                print("Tickers en salida:", tickers)
-            except Exception:
-                pass
+        print("\n" + "="*40)
+        print(f"📊 Resumen de la Cartera: '{cartera.name}'")
+        print(f"Total de activos: {len(cartera)}")
+        print("="*40)
+        # Usamos el método get_summary() de cada serie
+        for ticker, series in cartera.assets.items():
+            print(f"  -> {series.get_summary()}")
+        print("="*40)
 
-    # ---------- Persistencia opcional ----------
+
+    # ---------- Persistencia opcional (Sin cambios) ----------
+    # Guardamos el DataFrame 'out' combinado, como antes.
     if args.to_csv:
         out.to_csv(args.to_csv, index=True)
-        print(f"💾 Guardado CSV en: {args.to_csv}")
+        print(f"💾 Guardado CSV combinado en: {args.to_csv}")
     if args.to_json:
         out.to_json(args.to_json, orient="records", date_format="iso")
-        print(f"💾 Guardado JSON en: {args.to_json}")
+        print(f"💾 Guardado JSON combinado en: {args.to_json}")
 
 
 if __name__ == "__main__":
     main()
-
