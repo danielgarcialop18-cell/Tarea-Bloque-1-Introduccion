@@ -9,7 +9,7 @@ from .extractors.twelvedata_extractor import TwelveDataExtractor
 from .extractors.runner import fetch_many
 from .normalization.normalizer import Normalizer
 # Importa las nuevas clases del modelo que creaste
-from .models.series import PriceSeries, Portfolio  # <--- CAMBIO
+from .models.series import PriceSeries, Portfolio
 
 def _get_extractor(provider: str, apikey: str):
     if provider == "alpha":
@@ -62,6 +62,13 @@ def main():
     p.add_argument("--to-json", default=None, help="Ruta de salida JSON (opcional)")
     p.add_argument("--max-workers", type=int, default=4,
                    help="Nº de descargas simultáneas (1 = secuencial)")
+    
+    # --- CAMBIO: NUEVOS ARGUMENTOS ESTADÍSTICOS ---
+    p.add_argument("--show-stats", action="store_true", 
+                   help="Muestra estadísticas adicionales (min/max, retorno medio)")
+    p.add_argument("--sma", type=int, default=None, 
+                   help="Calcula y muestra la SMA de N días (ej. 20 o 50)")
+
     args = p.parse_args()
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
@@ -69,12 +76,12 @@ def main():
     ex = _get_extractor(args.provider, apikey)
     norm = Normalizer()
     
-    # Esta variable contendrá el resultado de fetch_many: Dict[str, pd.DataFrame]
-    out_by_symbol: dict[str, pd.DataFrame] = {} # <--- CAMBIO (solo inicialización)
+    out_by_symbol: dict[str, pd.DataFrame] = {} 
 
+    # --- (AQUÍ VA TODA LA LÓGICA DE DESCARGA (HISTORY / INDICATOR) ... ) ---
+    # --- ( ... ESA PARTE NO CAMBIA ... ) ---
     # ---------- HISTÓRICO (OHLCV) ----------
     if args.datatype == "history":
-        # Definimos cómo descargar 1 símbolo y cómo normalizarlo, según provider
         fetch_one = lambda s: ex.history(s, start=args.start, end=args.end)
         if args.provider == "alpha":
             normalize_one = lambda raw, s: norm.normalize_alphavantage_daily(raw, s)
@@ -83,7 +90,6 @@ def main():
         else:  # twelvedata
             normalize_one = lambda raw, s: norm.normalize_twelvedata_timeseries(raw, s)
 
-        # Elegimos secuencial vs paralelo
         if args.max_workers == 1:
             for sym in symbols:
                 try:
@@ -99,7 +105,6 @@ def main():
     else:
         if args.indicator != "rsi":
             raise SystemExit("Por ahora solo se implementa RSI en modo indicador.")
-        # Definimos fetch/normalize de RSI según provider
         if args.provider == "alpha":
             fetch_one = lambda s: ex.rsi(s, time_period=args.time_period, interval="daily", series_type="close")
             normalize_one = lambda raw, s: norm.normalize_alphavantage_rsi(raw, s)
@@ -123,46 +128,61 @@ def main():
             out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
     
     
-    # ---------- CREACIÓN DE OBJETOS Portfolio y PriceSeries ---------- # <--- CAMBIO (NUEVO BLOQUE)
-    
-    # 1. Creamos la cartera (el "archivador")
+    # ---------- CREACIÓN DE OBJETOS Portfolio y PriceSeries ---------- 
+    # (Esta parte no cambia)
     portfolio_name = f"Cartera CLI ({args.provider} - {args.datatype})"
     cartera = Portfolio(name=portfolio_name)
     
-    # 2. Iteramos sobre los DataFrames descargados
     for sym, df in out_by_symbol.items():
         if df is not None and not df.empty:
-            # Obtenemos la fuente del propio DataFrame (gracias al normalizador)
             source = df['source'].iloc[0] if 'source' in df.columns else args.provider
-            
-            # Creamos la "ficha" (PriceSeries)
             serie = PriceSeries(ticker=sym, source=source, data=df)
-            
-            # Añadimos la "ficha" al "archivador"
-            cartera.add_series(serie) # Esto imprimirá "Activo ... añadido a la cartera ..."
+            cartera.add_series(serie)
 
     # ---------- Unimos todo en un DataFrame para exportar (opcional) ----------
-    # Mantenemos esta lógica para que --to-csv y --to-json sigan funcionando
+    # (Esta parte no cambia)
     out = _concat_or_single(list(out_by_symbol.values()))
 
 
-    # ---------- Salida por pantalla (Modificada) ---------- # <--- CAMBIO (BLOQUE MODIFICADO)
+    # ---------- Salida por pantalla (Modificada) ---------- #
     
-    if not cartera.assets: # Comprobamos si la cartera está vacía
+    if not cartera.assets: 
         print("\n⛔ No hay datos para mostrar.")
     else:
         print("\n" + "="*40)
         print(f"📊 Resumen de la Cartera: '{cartera.name}'")
         print(f"Total de activos: {len(cartera)}")
         print("="*40)
-        # Usamos el método get_summary() de cada serie
+
+        # --- CAMBIO: BUCLE DE IMPRESIÓN MEJORADO ---
         for ticker, series in cartera.assets.items():
-            print(f"  -> {series.get_summary()}")
-        print("="*40)
+            
+            # 1. Imprimir el resumen (que ahora incluye media/std automáticamente)
+            print(f"\n  -> {series.get_summary()}") # Pongo \n para separar cada activo
+            
+            # 2. Comprobar y mostrar SMA si se pidió
+            if args.sma:
+                sma = series.calculate_sma(args.sma)
+                if sma is not None and not sma.empty:
+                    # .iloc[-1] coge el último valor de la media móvil
+                    print(f"     SMA({args.sma}d): {sma.iloc[-1]:.2f}") 
+                    
+            # 3. Comprobar y mostrar más estadísticas si se pidió
+            if args.show_stats:
+                stats = series.get_min_max()
+                returns = series.get_daily_returns()
+                
+                if stats:
+                    print(f"     Mín: {stats['min_value']:.2f} (el {stats['min_date'].date()})")
+                    print(f"     Máx: {stats['max_value']:.2f} (el {stats['max_date'].date()})")
+                if returns is not None:
+                    # .mean() * 100 para verlo en porcentaje
+                    print(f"     Retorno Diario Medio: {returns.mean() * 100:.4f}%")
+                        
+        print("\n" + "="*40) # Añadido \n para espaciado
 
 
     # ---------- Persistencia opcional (Sin cambios) ----------
-    # Guardamos el DataFrame 'out' combinado, como antes.
     if args.to_csv:
         out.to_csv(args.to_csv, index=True)
         print(f"💾 Guardado CSV combinado en: {args.to_csv}")
