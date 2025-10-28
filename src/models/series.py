@@ -1,5 +1,3 @@
-# src/models/series.py
-
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -7,7 +5,6 @@ import pandas as pd
 from typing import Optional, Dict, List, Union
 import numpy as np  # <--- AÑADIDO
 
-# --- AÑADIDO PARA LOS MÉTODOS DE PLOTEO ---
 from src.plots.plots import plot_prices, plot_monte_carlo
 
 
@@ -23,13 +20,13 @@ class PriceSeries:
     source: str
     data: pd.DataFrame
     
-    # 2. CAMPOS CALCULADOS (que no pasamos al crearla)
+    # 2. CAMPOS CALCULADOS (no se pasan al crearla)
     start_date: Optional[datetime] = field(init=False)
     end_date: Optional[datetime] = field(init=False)
     
-    # --- NUEVOS CAMPOS ESTADÍSTICOS AUTOMÁTICOS ---
+    # --- CAMPOS ESTADÍSTICOS AUTOMÁTICOS ---
     # Se calcularán en __post_init__
-    main_col: Optional[str] = field(init=False, default=None) # Columna principal (close o rsi)
+    main_col: Optional[str] = field(init=False, default=None) # (close o rsi)
     mean_value: Optional[float] = field(init=False, default=float('nan'))
     std_dev_value: Optional[float] = field(init=False, default=float('nan'))
 
@@ -38,7 +35,6 @@ class PriceSeries:
         Esta función especial se ejecuta AUTOMÁTICAMENTE
         justo después del __init__ que ha creado el dataclass.
         
-        Es el lugar perfecto para calcular nuestros campos.
         """
         if not self.data.empty:
             # --- Cálculo de fechas (existente) ---
