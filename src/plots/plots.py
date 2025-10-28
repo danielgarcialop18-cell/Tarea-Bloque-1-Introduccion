@@ -1,10 +1,5 @@
-# plots.py — Visualización
-# ------------------------
-# Aquí puedes crear gráficos con matplotlib o plotly.
-
 import matplotlib.pyplot as plt
-import numpy as np  # <--- ASEGÚRATE DE AÑADIR ESTE IMPORT
-
+import numpy as np  
 def plot_prices(df):
     plt.plot(df["date"], df["close"])
     plt.title("Evolución del precio")
