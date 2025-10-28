@@ -123,7 +123,7 @@ class PriceSeries:
         return None
 
     # --- ¡NUEVO MÉTODO! LÓGICA DE MONTE CARLO ---
-    def run_monte_carlo(self, days: int, simulations: int) -> np.ndarray:
+    def run_monte_carlo(self, days: int, simulations: int):
         """
         Ejecuta una simulación de Monte Carlo para esta serie.
         Utiliza el Movimiento Geométrico Browniano (GBM).

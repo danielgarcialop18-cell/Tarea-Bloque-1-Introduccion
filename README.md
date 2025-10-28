@@ -368,6 +368,46 @@ def get_min_max(self):
         return None
 ```
 
+### 🔬 Método Monte Carlo para un activo `run_monte_carlo(self, days: int, simulations: int)`
+Este método, añadido a la clase `PriceSeries`, permite simular la evolución futura del precio de un único activo de forma aislada.
+
+Utiliza el modelo de Movimiento Geométrico Browniano, que proyecta el precio basándose en su rentabilidad media (`mu`) y su volatilidad histórica (`sigma`).
+
+- Calcula las rentabilidades logarítmicas diarias de la `main_col`.
+```bash
+log_returns = np.log(1 + self.data[self.main_col].pct_change()).dropna()
+```
+
+- Extrae la media (`mu`) y la desviación estándar (`sigma`) de esas rentabilidades.
+```bash
+mu = log_returns.mean()
+sigma = log_returns.std()
+```
+
+- Inicia un bucle de `simulations` (ej. 1000 veces).
+
+- En cada simulación, genera `days` (ej. 252) "shocks" aleatorios (`np.random.normal`).
+
+- Aplica la fórmula del GBM para crear una trayectoria de precios futura, partiendo del último precio real.
+```bash
+ last_price = self.data[self.main_col].iloc[-1]
+        simulation_paths = np.zeros((days + 1, simulations))
+        simulation_paths[0] = last_price
+
+        # 4. Ejecutar simulaciones
+        for i in range(simulations):
+            shock = np.random.normal(0, 1, days)
+            drift = mu - 0.5 * sigma**2
+            daily_returns = np.exp(drift + sigma * shock)
+            
+            path = np.zeros(days + 1)
+            path[0] = last_price
+            for t in range(1, days + 1):
+                path[t] = path[t - 1] * daily_returns[t - 1]
+            
+            simulation_paths[:, i] = path
+```
+
 ## 💼 Clase portfolio ¿Qué es una cartera?
 Una Cartera (`Portfolio`) es un objeto contenedor que agrupa una colección de uno o más objetos `PriceSeries`.
 
