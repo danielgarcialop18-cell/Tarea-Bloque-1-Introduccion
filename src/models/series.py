@@ -4,7 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 import pandas as pd
-from typing import Optional, Dict, List, Union # <--- CAMBIO: Añadido Union
+from typing import Optional, Dict, List, Union
+import numpy as np  # <--- AÑADIDO
+
+# --- AÑADIDO PARA LOS MÉTODOS DE PLOTEO ---
+from src.plots.plots import plot_prices, plot_monte_carlo
+
 
 @dataclass
 class PriceSeries:
@@ -121,6 +126,54 @@ class PriceSeries:
             }
         return None
 
+    # --- ¡NUEVO MÉTODO! LÓGICA DE MONTE CARLO ---
+    def run_monte_carlo(self, days: int, simulations: int) -> np.ndarray:
+        """
+        Ejecuta una simulación de Monte Carlo para esta serie.
+        Utiliza el Movimiento Geométrico Browniano (GBM).
+        """
+        if self.main_col != 'close' or self.data.empty:
+            raise ValueError(f"Simulación solo aplicable a series 'close' con datos. (Activo: {self.ticker})")
+
+        # 1. Calcular rentabilidades
+        log_returns = np.log(1 + self.data[self.main_col].pct_change()).dropna()
+
+        if log_returns.empty:
+             raise ValueError(f"No hay suficientes datos históricos. (Activo: {self.ticker})")
+
+        # 2. Calcular estadísticas
+        mu = log_returns.mean()
+        sigma = log_returns.std()
+        
+        # 3. Preparar simulación
+        last_price = self.data[self.main_col].iloc[-1]
+        simulation_paths = np.zeros((days + 1, simulations))
+        simulation_paths[0] = last_price
+
+        # 4. Ejecutar simulaciones
+        for i in range(simulations):
+            shock = np.random.normal(0, 1, days)
+            drift = mu - 0.5 * sigma**2
+            daily_returns = np.exp(drift + sigma * shock)
+            
+            path = np.zeros(days + 1)
+            path[0] = last_price
+            for t in range(1, days + 1):
+                path[t] = path[t - 1] * daily_returns[t - 1]
+            
+            simulation_paths[:, i] = path
+
+        return simulation_paths
+
+    # --- ¡NUEVO MÉTODO! VISUALIZACIÓN ---
+    def plot_simulation(self, paths: np.ndarray, title: str):
+        """
+        Llama a la función de ploteo para mostrar los resultados
+        de la simulación de esta serie.
+        """
+        print(f"Mostrando gráfico para {self.ticker}...")
+        plot_monte_carlo(paths, title)
+
 
 @dataclass
 class Portfolio:
@@ -153,3 +206,75 @@ class Portfolio:
     def __len__(self):
         """Devuelve cuántos activos (series) hay en la cartera."""
         return len(self.assets)
+
+    # --- ¡NUEVO MÉTODO! LÓGICA DE MONTE CARLO ---
+    def run_monte_carlo(self, days: int, simulations: int) -> np.ndarray:
+        """
+        Ejecuta una simulación de Monte Carlo para la cartera completa,
+        preservando la CORRELACIÓN entre activos.
+        """
+        if not self.assets:
+            raise ValueError("La cartera no tiene activos.")
+        if self.weights is None:
+            raise ValueError("La cartera no tiene pesos (weights) definidos.")
+
+        tickers = self.tickers
+        weights = np.array([self.weights[t] for t in tickers])
+        
+        # 1. Crear DataFrame
+        close_prices = {}
+        for ticker, series in self.assets.items():
+            if series.main_col == 'close' and not series.data.empty:
+                close_prices[ticker] = series.data['close']
+            else:
+                raise ValueError(f"Activo {ticker} no tiene datos 'close' para simulación.")
+                
+        df_closes = pd.concat(close_prices, axis=1, keys=close_prices.keys()).fillna(method='ffill').dropna()
+
+        # 2. Calcular rentabilidades y estadísticas
+        log_returns = np.log(1 + df_closes.pct_change()).dropna()
+        
+        if log_returns.empty:
+            raise ValueError("No hay suficientes datos históricos para la simulación.")
+
+        mean_returns = log_returns.mean().values
+        cov_matrix = log_returns.cov().values
+        last_prices = df_closes.iloc[-1].values
+        
+        # 3. Descomposición de Cholesky
+        try:
+            L = np.linalg.cholesky(cov_matrix)
+        except np.linalg.LinAlgError:
+            raise ValueError("Error: La matriz de covarianza no es positiva definida.")
+
+        # 4. Preparar simulación
+        all_asset_paths = np.zeros((days + 1, len(tickers), simulations))
+        all_asset_paths[0, :, :] = last_prices.reshape(-1, 1)
+        portfolio_paths = np.zeros((days + 1, simulations))
+        portfolio_paths[0, :] = (last_prices * weights).sum()
+
+        # 5. Ejecutar simulaciones
+        drift = mean_returns - 0.5 * np.diag(cov_matrix)
+
+        for i in range(simulations):
+            Z = np.random.normal(0, 1, size=(days, len(tickers)))
+            daily_shocks = Z @ L.T
+            daily_returns = np.exp(drift + daily_shocks)
+            
+            current_prices = last_prices.copy()
+            for t in range(1, days + 1):
+                current_prices = current_prices * daily_returns[t-1, :]
+                all_asset_paths[t, :, i] = current_prices
+            
+            portfolio_paths[:, i] = all_asset_paths[:, :, i] @ weights
+
+        return portfolio_paths
+
+    # --- ¡NUEVO MÉTODO! VISUALIZACIÓN ---
+    def plot_simulation(self, paths: np.ndarray, title: str):
+        """
+        Llama a la función de ploteo para mostrar los resultados
+        de la simulación de la cartera.
+        """
+        print(f"Mostrando gráfico para Cartera '{self.name}'...")
+        plot_monte_carlo(paths, title)

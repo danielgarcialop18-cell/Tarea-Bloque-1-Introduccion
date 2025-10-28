@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import pandas as pd
+import numpy as np  # <--- Asegúrate de tener este import
 
 from .extractors.alphavantage_extractor import AlphaVantageExtractor
 from .extractors.marketstack_extractor import MarketStackExtractor
@@ -10,6 +11,9 @@ from .extractors.runner import fetch_many
 from .normalization.normalizer import Normalizer
 # Importa las nuevas clases del modelo que creaste
 from .models.series import PriceSeries, Portfolio
+
+# --- ¡El simulador ya no se importa desde aquí! ---
+
 
 def _get_extractor(provider: str, apikey: str):
     if provider == "alpha":
@@ -43,8 +47,34 @@ def _concat_or_single(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     return pd.concat(dfs).sort_index()
 
 
+# --- FUNCIÓN DE AYUDA PARA IMPRIMIR RESULTADOS DE MONTE CARLO ---
+def _print_mc_results(paths: np.ndarray, name: str):
+    """Imprime estadísticas de un resultado de Monte Carlo."""
+    if paths is None or paths.size == 0:
+        print(f"   -> {name}: No hay resultados.")
+        return
+    
+    ultimo_precio_real = paths[0, 0] 
+    precios_finales = paths[-1, :]   
+    
+    media_final = np.mean(precios_finales)
+    mediana_final = np.median(precios_finales)
+    percentil_5 = np.percentile(precios_finales, 5)
+    percentil_95 = np.percentile(precios_finales, 95)
+    
+    retorno_medio_pct = (media_final / ultimo_precio_real - 1) * 100
+
+    print("\n" + "--- Resultados Monte Carlo para: " f"{name}" " ---")
+    print(f"   Precio/Valor Inicial: {ultimo_precio_real:12.2f}")
+    print(f"   Valor Final (Media):    {media_final:12.2f} (Retorno: {retorno_medio_pct:+.2f}%)")
+    print(f"   Valor Final (Mediana):  {mediana_final:12.2f}")
+    print(f"   Rango 90%% (P5 - P95):  {percentil_5:12.2f} - {percentil_95:12.2f}")
+
+
 def main():
     p = argparse.ArgumentParser(description="Extractor multi-API de OHLCV y RSI (formato estandarizado)")
+    
+    # --- ARGUMENTOS ORIGINALES (LOS QUE FALTABAN) ---
     p.add_argument("--provider", choices=["alpha","marketstack","twelvedata"], required=True,
                    help="Proveedor de datos")
     p.add_argument("--symbols", required=True,
@@ -63,11 +93,25 @@ def main():
     p.add_argument("--max-workers", type=int, default=4,
                    help="Nº de descargas simultáneas (1 = secuencial)")
     
-    # --- CAMBIO: NUEVOS ARGUMENTOS ESTADÍSTICOS ---
+    # --- ARGUMENTOS DE ESTADÍSTICAS ---
     p.add_argument("--show-stats", action="store_true", 
                    help="Muestra estadísticas adicionales (min/max, retorno medio)")
     p.add_argument("--sma", type=int, default=None, 
                    help="Calcula y muestra la SMA de N días (ej. 20 o 50)")
+
+    # --- ARGUMENTOS MONTE CARLO ---
+    p.add_argument("--monte-carlo", type=int, default=None, 
+                   metavar="N_SIM",
+                   help="Nº de simulaciones Monte Carlo a ejecutar (ej. 1000)")
+    p.add_argument("--mc-days", type=int, default=252, 
+                   help="Días a futuro para la simulación (def: 252, 1 año bursátil)")
+    p.add_argument("--mc-portfolio", action="store_true", 
+                   help="Ejecutar simulación sobre la cartera completa (requiere --monte-carlo y datos 'history')")
+    p.add_argument("--mc-weights", type=str, default=None, 
+                   metavar="W1,W2,..",
+                   help="Pesos de cartera '0.6,0.4' (auto-normaliza, si no, pesos iguales)")
+    p.add_argument("--mc-plot", action="store_true", 
+                   help="Mostrar un gráfico de la simulación (requiere matplotlib)")
 
     args = p.parse_args()
 
@@ -129,7 +173,6 @@ def main():
     
     
     # ---------- CREACIÓN DE OBJETOS Portfolio y PriceSeries ---------- 
-    # (Esta parte no cambia)
     portfolio_name = f"Cartera CLI ({args.provider} - {args.datatype})"
     cartera = Portfolio(name=portfolio_name)
     
@@ -139,13 +182,10 @@ def main():
             serie = PriceSeries(ticker=sym, source=source, data=df)
             cartera.add_series(serie)
 
-    # ---------- Unimos todo en un DataFrame para exportar (opcional) ----------
-    # (Esta parte no cambia)
     out = _concat_or_single(list(out_by_symbol.values()))
 
 
     # ---------- Salida por pantalla (Modificada) ---------- #
-    
     if not cartera.assets: 
         print("\n⛔ No hay datos para mostrar.")
     else:
@@ -154,32 +194,91 @@ def main():
         print(f"Total de activos: {len(cartera)}")
         print("="*40)
 
-        # --- CAMBIO: BUCLE DE IMPRESIÓN MEJORADO ---
         for ticker, series in cartera.assets.items():
-            
-            # 1. Imprimir el resumen (que ahora incluye media/std automáticamente)
-            print(f"\n  -> {series.get_summary()}") # Pongo \n para separar cada activo
-            
-            # 2. Comprobar y mostrar SMA si se pidió
+            print(f"\n  -> {series.get_summary()}")
             if args.sma:
                 sma = series.calculate_sma(args.sma)
                 if sma is not None and not sma.empty:
-                    # .iloc[-1] coge el último valor de la media móvil
                     print(f"     SMA({args.sma}d): {sma.iloc[-1]:.2f}") 
-                    
-            # 3. Comprobar y mostrar más estadísticas si se pidió
             if args.show_stats:
                 stats = series.get_min_max()
                 returns = series.get_daily_returns()
-                
                 if stats:
                     print(f"     Mín: {stats['min_value']:.2f} (el {stats['min_date'].date()})")
                     print(f"     Máx: {stats['max_value']:.2f} (el {stats['max_date'].date()})")
                 if returns is not None:
-                    # .mean() * 100 para verlo en porcentaje
                     print(f"     Retorno Diario Medio: {returns.mean() * 100:.4f}%")
+        print("\n" + "="*40)
+
+
+    # ---------- LÓGICA DE SIMULACIÓN MONTE CARLO (Refactorizada) ----------
+    
+    if args.monte_carlo and args.monte_carlo > 0:
+        print("\n" + "="*40)
+        print(f"🔬 Ejecutando Simulación Monte Carlo")
+        print(f"   Simulaciones: {args.monte_carlo} | Días a futuro: {args.mc_days}")
+        print("="*40)
+        
+        # --- SIMULACIÓN DE CARTERA COMPLETA ---
+        if args.mc_portfolio:
+            if not cartera.assets:
+                print("⛔ No hay activos en la cartera para simular.")
+            else:
+                pesos_cartera = None
+                tickers_cartera = cartera.tickers
+                if args.mc_weights:
+                    try:
+                        pesos_lista = [float(p.strip()) for p in args.mc_weights.split(',')]
+                        if len(pesos_lista) != len(cartera):
+                            raise ValueError(f"Número de pesos ({len(pesos_lista)}) no coincide con número de activos ({len(cartera)})")
+                        s = sum(pesos_lista)
+                        if not np.isclose(s, 1.0) and s > 0:
+                            print(f"Advertencia: Los pesos suman {s:.2f}, se normalizarán.")
+                            pesos_lista = [p / s for p in pesos_lista]
+                        pesos_cartera = {ticker: peso for ticker, peso in zip(tickers_cartera, pesos_lista)}
+                    except Exception as e:
+                        print(f"⚠️ Error al parsear pesos: {e}. Usando pesos iguales.")
+                if pesos_cartera is None:
+                    print(f"Usando pesos iguales (1/{len(cartera)}) para {len(cartera)} activos.")
+                    peso_igual = 1.0 / len(cartera)
+                    pesos_cartera = {ticker: peso_igual for ticker in tickers_cartera}
+                
+                cartera.weights = pesos_cartera
+                print(f"Simulando cartera completa. Pesos: {cartera.weights}")
+                
+                try:
+                    # --- ¡CAMBIO AQUÍ! ---
+                    paths = cartera.run_monte_carlo(args.mc_days, args.monte_carlo)
+                    _print_mc_results(paths, f"Cartera '{cartera.name}'")
+                    
+                    if args.mc_plot:
+                        # --- ¡CAMBIO AQUÍ! ---
+                        cartera.plot_simulation(paths, f"Simulación Monte Carlo - Cartera '{cartera.name}'")
                         
-        print("\n" + "="*40) # Añadido \n para espaciado
+                except Exception as e:
+                    print(f"⚠️ Error fatal en simulación de cartera: {e}")
+
+        # --- SIMULACIÓN DE ACTIVOS INDIVIDUALES ---
+        else:
+            print("Simulando activos individuales...")
+            for ticker, series in cartera.assets.items():
+                if series.main_col != 'close' or series.data.empty:
+                    print(f"\n   -> Omitiendo {ticker} (no es 'close' o está vacío)")
+                    continue
+                
+                try:
+                    # --- ¡CAMBIO AQUÍ! ---
+                    paths = series.run_monte_carlo(args.mc_days, args.monte_carlo)
+                    _print_mc_results(paths, ticker)
+                    
+                    if args.mc_plot:
+                        # --- ¡CAMBIO AQUÍ! ---
+                        series.plot_simulation(paths, f"Simulación Monte Carlo - {ticker}")
+                        
+                except Exception as e:
+                    print(f"⚠️ Error en simulación de {ticker}: {e}")
+        
+        print("\n" + "="*40)
 
 
     # ---------- Persistencia opcional (Sin cambios) ----------
