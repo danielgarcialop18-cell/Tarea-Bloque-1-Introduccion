@@ -514,3 +514,15 @@ for i in range(simulations):
 
 return portfolio_paths
 ```
+
+### 📊 Método Plot `plot_simulation(self, paths: np.ndarray, title: str)`
+Tanto `PriceSeries` como `Portfolio` incluyen este método de conveniencia.
+
+No realiza cálculos, sino que actúa como un "atajo" o "puente" que llama a la función `plot_monte_carlo` (definida en `src/plots/plots.py`) para generar la visualización de los resultados.
+
+```bash
+def plot_simulation(self, paths: np.ndarray, title: str):  
+    print(f"Mostrando gráfico para Cartera '{self.name}'...")
+    plot_monte_carlo(paths, title)
+```
+Esto permite que el `cli.py` sea más limpio, llamando simplemente a `series.plot_simulation(...)` en lugar de tener que importar y llamar a `plot_monte_carlo` directamente.
