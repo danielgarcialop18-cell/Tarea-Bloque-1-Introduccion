@@ -204,7 +204,7 @@ class Portfolio:
         return len(self.assets)
 
     # --- ¡NUEVO MÉTODO! LÓGICA DE MONTE CARLO ---
-    def run_monte_carlo(self, days: int, simulations: int) -> np.ndarray:
+    def run_monte_carlo(self, days: int, simulations: int):
         """
         Ejecuta una simulación de Monte Carlo para la cartera completa,
         preservando la CORRELACIÓN entre activos.

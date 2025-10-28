@@ -390,7 +390,7 @@ sigma = log_returns.std()
 
 - Aplica la fórmula del GBM para crear una trayectoria de precios futura, partiendo del último precio real.
 ```bash
- last_price = self.data[self.main_col].iloc[-1]
+        last_price = self.data[self.main_col].iloc[-1]
         simulation_paths = np.zeros((days + 1, simulations))
         simulation_paths[0] = last_price
 
@@ -450,3 +450,67 @@ def add_series(self, series: PriceSeries):
         print(f"Activo {series.ticker} añadido a la cartera '{self.name}'.")
 ```
 
+### 🔬 Método Monte Carlo para una cartera `run_monte_carlo(self, days: int, simulations: int)`
+Este es un método más avanzado, añadido a la clase `Portfolio`, que simula la evolución de toda la cartera como una unidad.
+
+La diferencia fundamental es que preserva la correlación histórica entre los activos. Si "AAPL" y "MSFT" tienden a moverse juntos, la simulación respeta esa relación.
+
+- Concatena los precios de cierre de todos los activos en un único `DataFrame`.
+```bash
+close_prices = {}
+        for ticker, series in self.assets.items():
+            if series.main_col == 'close' and not series.data.empty:
+                close_prices[ticker] = series.data['close']
+            else:
+                raise ValueError(f"Activo {ticker} no tiene datos 'close' para simulación.")
+                
+df_closes = pd.concat(close_prices, axis=1, keys=close_prices.keys()).fillna(method='ffill').dropna()
+```
+
+- Calcula el vector de rentabilidades medias (`mean_returns`) y la Matriz de Covarianza (`cov_matrix`). Esta matriz es la clave, ya que almacena la volatilidad de cada activo y cómo se mueven entre sí.
+```bash
+log_returns = np.log(1 + df_closes.pct_change()).dropna()
+        
+if log_returns.empty:
+    raise ValueError("No hay suficientes datos históricos para la simulación.")
+
+mean_returns = log_returns.mean().values
+cov_matrix = log_returns.cov().values
+last_prices = df_closes.iloc[-1].values
+```
+
+- Aplica la Descomposición de Cholesky (`L = np.linalg.cholesky(cov_matrix)`) para obtener una matriz L que representa la "receta" de la correlación.
+```bash
+try:
+    L = np.linalg.cholesky(cov_matrix)
+except np.linalg.LinAlgError:
+    raise ValueError("Error: La matriz de covarianza no es positiva definida.")
+```
+
+- En cada simulación, genera ruido aleatorio simple (`Z`) y lo multiplica por L (`daily_shocks = Z @ L.T`). El resultado es un "ruido correlacionado" que imita el comportamiento histórico.
+
+- Proyecta los precios de todos los activos usando este ruido correlacionado.
+
+- Calcula el valor total de la cartera para cada día multiplicando los precios simulados por los pesos (`weights`) definidos.
+```bash
+all_asset_paths = np.zeros((days + 1, len(tickers), simulations))
+all_asset_paths[0, :, :] = last_prices.reshape(-1, 1)
+portfolio_paths = np.zeros((days + 1, simulations))
+portfolio_paths[0, :] = (last_prices * weights).sum()
+
+drift = mean_returns - 0.5 * np.diag(cov_matrix)
+
+for i in range(simulations):
+    Z = np.random.normal(0, 1, size=(days, len(tickers)))
+    daily_shocks = Z @ L.T
+    daily_returns = np.exp(drift + daily_shocks)
+            
+    current_prices = last_prices.copy()
+    for t in range(1, days + 1):
+        current_prices = current_prices * daily_returns[t-1, :]
+        all_asset_paths[t, :, i] = current_prices
+            
+    portfolio_paths[:, i] = all_asset_paths[:, :, i] @ weights
+
+return portfolio_paths
+```
