@@ -161,7 +161,7 @@ class PriceSeries:
 
         return simulation_paths
 
-    # --- ¡NUEVO MÉTODO! VISUALIZACIÓN ---
+    # --- VISUALIZACIÓN ---
     def plot_simulation(self, paths: np.ndarray, title: str):
         """
         Llama a la función de ploteo para mostrar los resultados
@@ -169,6 +169,28 @@ class PriceSeries:
         """
         print(f"Mostrando gráfico para {self.ticker}...")
         plot_monte_carlo(paths, title)
+
+# --- METODO DE LIMPIEZA 1: RELLENA LOS NaN CON ffill ---
+    def fillna(self, method: str = 'ffill'):
+        if not self.data.empty:
+            self.data.fillna(method=method, inplace=True)
+            print(f"[{self.ticker}] Datos NaN rellenados con método '{method}'.")
+        return self
+    
+# --- METODO DE LIMPIEZA 2: RELLENA LOS NaN CON ffill ---
+    def resample_daily(self, fill_method: str = 'ffill'):
+        """
+        Re-muestrea los datos a una frecuencia diaria ('D') para rellenar
+        huecos (como fines de semana o festivos).
+        Modifica el DataFrame interno.
+        """
+        if not self.data.empty:
+            self.data.index = pd.to_datetime(self.data.index) # me aseguro de que el indice sea un datetime
+            self.data = self.data.resample('D').fillna(method=fill_method)
+            self.__post_init__() 
+            print(f"[{self.ticker}] Serie re-muestreada a diario ('D') con método '{fill_method}'.")
+        return self
+
 
 
 @dataclass

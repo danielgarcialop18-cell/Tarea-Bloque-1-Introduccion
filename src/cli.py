@@ -113,6 +113,12 @@ def main():
     p.add_argument("--mc-plot", action="store_true", 
                    help="Mostrar un gráfico de la simulación (requiere matplotlib)")
 
+    # --- ARGUMENTOS LIMPIEZA ---
+    p.add_argument("--clean-na", action="store_true", 
+                   help="Aplica limpieza de NaNs (rellena con 'ffill')")
+    p.add_argument("--resample-daily", action="store_true", 
+                   help="Re-muestrea la serie a frecuencia diaria (rellena fines de semana)")
+    
     args = p.parse_args()
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
@@ -180,6 +186,13 @@ def main():
         if df is not None and not df.empty:
             source = df['source'].iloc[0] if 'source' in df.columns else args.provider
             serie = PriceSeries(ticker=sym, source=source, data=df)
+
+            if args.clean_na:
+                serie.fillna() # Llama al método que usa 'ffill' por defecto
+            
+            if args.resample_daily:
+                serie.resample_daily() # Llama al método que re-muestrea y usa 'ffill'
+
             cartera.add_series(serie)
 
     out = _concat_or_single(list(out_by_symbol.values()))
