@@ -408,6 +408,52 @@ sigma = log_returns.std()
             simulation_paths[:, i] = path
 ```
 
+### 🧹 Método de limpieza básica `fillna(self, method: str = 'ffill')`
+Este método me permite rellenar los valores `NaN` con el valor del día anterior. Pese a que este método se limite exclusivamente al uso de una función de `pandas`, permite usar en el `cli.py` el método sin tener que llamar desde ahí a la variable interna `.data`.
+
+En este caso se ha decidido completar la variable vacía con el precio del día anterior ya que una ausencia de variable puede deberse a que un día sea festivo, por ejemplo, y por tanto el mercado está cerrado, por lo que se supone que el precio es el mismo que el del día anterior.
+```bash
+def fillna(self, method: str = 'ffill'):
+    if not self.data.empty:
+        self.data.fillna(method=method, inplace=True)
+        print(f"[{self.ticker}] Datos NaN rellenados con método '{method}'.")
+    return self
+```
+
+### 🧹 Método de preprocesado `resample_daily(self, fill_method: str = 'ffill')`
+Este método lo que hace es crear una fila para cada día del año, de esta forma habrá 365 filas, y por tanto, los fines de semana y festivos se rellenarán con los datos del día anterior. Aunque no parezca muy útil, nos va a permitir comparar activos con criptomonedas que abren todos los días del año, así tendremos para todos 365 filas.
+```bash
+def resample_daily(self, fill_method: str = 'ffill'):
+    if not self.data.empty:
+        self.data.index = pd.to_datetime(self.data.index) # me aseguro de que el indice sea un datetime
+        self.data = self.data.resample('D').fillna(method=fill_method)
+        self.__post_init__() 
+        print(f"[{self.ticker}] Serie re-muestreada a diario ('D') con método '{fill_method}'.")
+    return self
+```
+
+### 🧹 Limpieza de negativos y ceros `negative_prices(self)`
+Este método sirve para evitar eliminar posibles datos nulos o negativos provenientes (como posible fallo) de la API. Es importante eliminar estos valores ya que en la simulación de Monte Carlo se aplican logaritmos y la función `np.log(1 + pct_change)` no puede calcular el logaritmo de cero ni de un número negativo.
+
+- Recorre las columnas de precios (`open`, `high`, `low`, `close`) y busca cualquier valor menor o igual a cero.
+- Si encuentra alguno, lo reemplaza con `NaN`.
+- Esto es vital, ya que la simulación de Monte Carlo falla al intentar calcular el logaritmo (`np.log`) de un número no positivo.
+- Este método debe ejecutarse antes de `fillna()`.
+```bash
+def negative_prices(self):
+    if not self.data.empty:
+        price_cols = ['open', 'high', 'low', 'close']
+        count = 0
+        for col in price_cols:
+            if col in self.data.columns:
+                non_positive_mask = self.data[col] <= 0
+                count += non_positive_mask.sum()
+                self.data.loc[non_positive_mask, col] = np.nan
+        if count > 0:
+            print(f"[{self.ticker}] Encontrados y eliminados {count} precios no positivos (<= 0)")
+    return self 
+```
+
 ## 💼 Clase portfolio ¿Qué es una cartera?
 Una Cartera (`Portfolio`) es un objeto contenedor que agrupa una colección de uno o más objetos `PriceSeries`.
 

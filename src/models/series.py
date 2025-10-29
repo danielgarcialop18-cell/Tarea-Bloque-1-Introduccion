@@ -191,7 +191,19 @@ class PriceSeries:
             print(f"[{self.ticker}] Serie re-muestreada a diario ('D') con método '{fill_method}'.")
         return self
 
-
+# --- METODO DE LIMPIEZA 3: ELIMINA LOS VALORES NEGATIVOS Y NULOS ---
+    def negative_prices(self):
+        if not self.data.empty:
+            price_cols = ['open', 'high', 'low', 'close']
+            count = 0
+            for col in price_cols:
+                if col in self.data.columns:
+                    non_positive_mask = self.data[col] <= 0
+                    count += non_positive_mask.sum()
+                    self.data.loc[non_positive_mask, col] = np.nan
+            if count > 0:
+                print(f"[{self.ticker}] Encontrados y eliminados {count} precios no positivos (<= 0)")
+        return self 
 
 @dataclass
 class Portfolio:

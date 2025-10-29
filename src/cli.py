@@ -118,6 +118,8 @@ def main():
                    help="Aplica limpieza de NaNs (rellena con 'ffill')")
     p.add_argument("--resample-daily", action="store_true", 
                    help="Re-muestrea la serie a frecuencia diaria (rellena fines de semana)")
+    p.add_argument("--negative-prices", action="store_true",
+                   help="Elimina precios <= 0 reemplazando con NaN (Recomendado)")
     
     args = p.parse_args()
 
@@ -186,6 +188,9 @@ def main():
         if df is not None and not df.empty:
             source = df['source'].iloc[0] if 'source' in df.columns else args.provider
             serie = PriceSeries(ticker=sym, source=source, data=df)
+
+            if args.negative_prices:
+                serie.negative_prices()
 
             if args.clean_na:
                 serie.fillna() # Llama al método que usa 'ffill' por defecto
