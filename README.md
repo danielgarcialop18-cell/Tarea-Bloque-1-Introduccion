@@ -433,7 +433,7 @@ def resample_daily(self, fill_method: str = 'ffill'):
 ```
 
 ### 🧹 Limpieza de negativos y ceros `negative_prices(self)`
-Este método sirve para evitar eliminar posibles datos nulos o negativos provenientes (como posible fallo) de la API. Es importante eliminar estos valores ya que en la simulación de Monte Carlo se aplican logaritmos y la función `np.log(1 + pct_change)` no puede calcular el logaritmo de cero ni de un número negativo.
+Este método sirve para eliminar posibles datos nulos o negativos provenientes (como posible fallo) de la API. Es importante eliminar estos valores ya que en la simulación de Monte Carlo se aplican logaritmos y la función `np.log(1 + pct_change)` no puede calcular el logaritmo de cero ni de un número negativo.
 
 - Recorre las columnas de precios (`open`, `high`, `low`, `close`) y busca cualquier valor menor o igual a cero.
 - Si encuentra alguno, lo reemplaza con `NaN`.
