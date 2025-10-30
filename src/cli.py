@@ -124,7 +124,8 @@ def main():
     # --- ARGUMENTO DE REPORTE ---
     p.add_argument("--report", action="store_true", 
                    help="Genera y muestra un informe detallado de la cartera en Markdown")
-    
+
+    # --- ¡¡¡ --- NUEVO ARGUMENTO DE GRÁFICOS --- !!! ---
     p.add_argument("--show-plots", action="store_true", 
                    help="Genera y muestra gráficos de análisis de la cartera")
     
@@ -236,6 +237,36 @@ def main():
         print("\n" + "="*40)
 
 
+    # --- ¡¡¡ --- ARREGLO PARA EL GRÁFICO DE TARTA --- !!! ---
+    # Movemos la lógica de asignación de pesos AFUERA del 'if args.monte_carlo'
+    # para que los pesos se asignen si se pasan, y así los gráficos
+    # y el reporte puedan usarlos.
+    
+    if args.mc_weights and cartera.assets:
+        pesos_cartera = None
+        tickers_cartera = cartera.tickers
+        try:
+            pesos_lista = [float(p.strip()) for p in args.mc_weights.split(',')]
+            if len(pesos_lista) != len(cartera):
+                raise ValueError(f"Número de pesos ({len(pesos_lista)}) no coincide con número de activos ({len(cartera)})")
+            s = sum(pesos_lista)
+            if not np.isclose(s, 1.0) and s > 0:
+                print(f"Advertencia: Los pesos suman {s:.2f}, se normalizarán.")
+                pesos_lista = [p / s for p in pesos_lista]
+            pesos_cartera = {ticker: peso for ticker, peso in zip(tickers_cartera, pesos_lista)}
+        except Exception as e:
+            print(f"⚠️ Error al parsear pesos: {e}. Usando pesos iguales.")
+        
+        if pesos_cartera is None:
+            print(f"Usando pesos iguales (1/{len(cartera)}) para {len(cartera)} activos.")
+            peso_igual = 1.0 / len(cartera)
+            pesos_cartera = {ticker: peso_igual for ticker in tickers_cartera}
+        
+        # Asignamos los pesos a la cartera
+        cartera.weights = pesos_cartera
+        print(f"Pesos de cartera asignados: {cartera.weights}")
+    
+
     # ---------- LÓGICA DE SIMULACIÓN MONTE CARLO (Refactorizada) ----------
     
     if args.monte_carlo and args.monte_carlo > 0:
@@ -248,36 +279,17 @@ def main():
         if args.mc_portfolio:
             if not cartera.assets:
                 print("⛔ No hay activos en la cartera para simular.")
+            # --- ¡¡CAMBIO AQUÍ!! ---
+            # La lógica de pesos ya se ejecutó, solo comprobamos si existen
+            elif not cartera.weights:
+                print("⛔ No se pueden simular pesos de cartera porque no se definieron (usa --mc-weights).")
             else:
-                pesos_cartera = None
-                tickers_cartera = cartera.tickers
-                if args.mc_weights:
-                    try:
-                        pesos_lista = [float(p.strip()) for p in args.mc_weights.split(',')]
-                        if len(pesos_lista) != len(cartera):
-                            raise ValueError(f"Número de pesos ({len(pesos_lista)}) no coincide con número de activos ({len(cartera)})")
-                        s = sum(pesos_lista)
-                        if not np.isclose(s, 1.0) and s > 0:
-                            print(f"Advertencia: Los pesos suman {s:.2f}, se normalizarán.")
-                            pesos_lista = [p / s for p in pesos_lista]
-                        pesos_cartera = {ticker: peso for ticker, peso in zip(tickers_cartera, pesos_lista)}
-                    except Exception as e:
-                        print(f"⚠️ Error al parsear pesos: {e}. Usando pesos iguales.")
-                if pesos_cartera is None:
-                    print(f"Usando pesos iguales (1/{len(cartera)}) para {len(cartera)} activos.")
-                    peso_igual = 1.0 / len(cartera)
-                    pesos_cartera = {ticker: peso_igual for ticker in tickers_cartera}
-                
-                cartera.weights = pesos_cartera
                 print(f"Simulando cartera completa. Pesos: {cartera.weights}")
-                
                 try:
-                    # --- ¡CAMBIO AQUÍ! ---
                     paths = cartera.run_monte_carlo(args.mc_days, args.monte_carlo)
                     _print_mc_results(paths, f"Cartera '{cartera.name}'")
                     
                     if args.mc_plot:
-                        # --- ¡CAMBIO AQUÍ! ---
                         cartera.plot_simulation(paths, f"Simulación Monte Carlo - Cartera '{cartera.name}'")
                         
                 except Exception as e:
@@ -292,12 +304,10 @@ def main():
                     continue
                 
                 try:
-                    # --- ¡CAMBIO AQUÍ! ---
                     paths = series.run_monte_carlo(args.mc_days, args.monte_carlo)
                     _print_mc_results(paths, ticker)
                     
                     if args.mc_plot:
-                        # --- ¡CAMBIO AQUÍ! ---
                         series.plot_simulation(paths, f"Simulación Monte Carlo - {ticker}")
                         
                 except Exception as e:
@@ -305,7 +315,7 @@ def main():
         
         print("\n" + "="*40)
 
-# --- ¡¡¡ --- NUEVA SECCIÓN DE REPORTE --- !!! ---
+    # --- ¡¡¡ --- SECCIÓN DE REPORTE (Existente) --- !!! ---
     if args.report:
         print("\n" + "="*50)
         print(" GENERANDO REPORTE DE CARTERA ".center(50, "="))
@@ -324,15 +334,7 @@ def main():
         print(" FIN DEL REPORTE ".center(50, "="))
         print("="*50)
 
-
-    if args.to_csv:
-        out.to_csv(args.to_csv, index=True)
-        print(f"💾 Guardado CSV combinado en: {args.to_csv}")
-    if args.to_json:
-        out.to_json(args.to_json, orient="records", date_format="iso")
-        print(f"💾 Guardado JSON combinado en: {args.to_json}")
-
-# --- ¡¡¡ --- NUEVA SECCIÓN DE GRÁFICOS --- !!! ---
+    # --- ¡¡¡ --- NUEVA SECCIÓN DE GRÁFICOS --- !!! ---
     if args.show_plots:
         print("\n" + "="*50)
         print(" GENERANDO GRÁFICOS DE CARTERA ".center(50, "="))
@@ -357,6 +359,7 @@ def main():
     if args.to_json:
         out.to_json(args.to_json, orient="records", date_format="iso")
         print(f"💾 Guardado JSON combinado en: {args.to_json}")
+
 
 if __name__ == "__main__":
     main()

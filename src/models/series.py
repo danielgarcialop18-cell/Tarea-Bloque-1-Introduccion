@@ -6,7 +6,13 @@ from typing import Optional, Dict, List, Union
 import numpy as np 
 from tabulate import tabulate
 
-from src.plots.plots import plot_prices, plot_monte_carlo
+from src.plots.plots import (
+    plot_prices, 
+    plot_monte_carlo,
+    plot_normalized_prices,      
+    plot_correlation_heatmap,    
+    plot_weights_pie_chart      
+)
 
 
 @dataclass
