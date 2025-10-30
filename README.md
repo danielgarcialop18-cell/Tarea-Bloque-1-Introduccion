@@ -572,3 +572,88 @@ def plot_simulation(self, paths: np.ndarray, title: str):
     plot_monte_carlo(paths, title)
 ```
 Esto permite que el `cli.py` sea más limpio, llamando simplemente a `series.plot_simulation(...)` en lugar de tener que importar y llamar a `plot_monte_carlo` directamente.
+
+### 📰 Método Report `report(self)`
+El objetivo de este método es generar un informe completo en formato Markdown, diseñado para imprimirse en consola. Este informe es importante para entender el riesgo de la cartera y la coherencia y calidad de los datos descargados.
+
+El informe incluye los siguientes análisis:
+
+1. Análisis de Pesos (Weights):
+
+- Muestra una tabla con la ponderación de cada activo (ej. `AAPL: 50.00%`).
+- Si los pesos no se han definido (con `--mc-weights`), muestra una advertencia (⚠️), ya que los análisis de riesgo de cartera no se podrán ejecutar.
+```bash
+md.append("\n## Pesos de la Cartera")
+    if self.weights:
+        weights_data = [[ticker, f"{weight*100:.2f}%"] for ticker, weight in self.weights.items()]
+        md.append(tabulate(weights_data, headers=["Activo", "Peso"], tablefmt="pipe"))
+    else:
+        md.append("\n> ⚠️ Advertencia: No se han definido pesos ('weights') para esta cartera. \n> El análisis de riesgo/retorno de cartera (ej. Monte Carlo de cartera) no está disponible.")
+```
+
+2. Resumen de Activos Individuales:
+
+Crea una tabla-resumen de todos los activos en la cartera, detallando su columna principal (`close` o `rsi`), número de registros, fechas de inicio y fin, media y volatilidad.
+```bash
+md.append("\n## 📊 Resumen de Activos Individuales")
+        
+    table_data = []
+    all_start_dates = []
+    all_end_dates = []
+        
+    for ticker, series in self.assets.items():
+        if series.data.empty:
+            table_data.append([ticker, "N/A", 0, "N/A", "N/A", "N/A", "N/A"])
+            continue
+                
+        all_start_dates.append(series.start_date)
+        all_end_dates.append(series.end_date)
+        table_data.append([
+            series.ticker,
+            series.main_col,
+            len(series),
+            series.start_date.date(),
+            series.end_date.date(),
+            f"{series.mean_value:,.2f}",
+            f"{series.std_dev_value:,.2f}"
+        ])
+            
+    md.append(tabulate(table_data, headers=["Ticker", "Col. Principal", "Registros", "Desde", "Hasta", "Media", "Volatilidad (Std)"], tablefmt="pipe"))
+```
+
+3. Advertencias sobre Rango de Fechas (¡Crítico!):
+
+- Este es uno de los análisis más importantes. Compara las fechas de inicio y fin de todos los activos.
+- Advierte sobre disparidades (ej. "Los activos no comienzan en la misma fecha").
+- Calcula y muestra el "Rango Común Efectivo": el único período de tiempo donde todos los activos tienen datos simultáneamente.
+- Si no existe un rango común (ej. un activo termina antes de que otro empiece), lanza una advertencia, indicando que el análisis de correlación fallará.
+```bash
+if all_start_dates and all_end_dates:
+    min_start = min(all_start_dates)
+    max_start = max(all_start_dates)
+    min_end = min(all_end_dates)
+    max_end = max(all_end_dates)
+            
+    md.append("\n### ⚠️ Advertencias sobre Rango de Fechas")
+    if max_start > min_start:
+        md.append(f"- Disparidad de Inicio: Los activos no comienzan en la misma fecha (rango: {min_start.date()} a {max_start.date()}).")
+    if min_end < max_end:
+        md.append(f"- Disparidad de Fin: Los activos no terminan en la misma fecha (rango: {min_end.date()} a {max_end.date()}).")
+            
+    common_start = max_start
+    common_end = min_end
+            
+    if common_start >= common_end:
+        md.append(f"- ¡IMPOSIBLE! No existe un rango de fechas común para todos los activos (Inicio común: {common_start.date()}, Fin común: {common_end.date()}). El análisis de correlación fallará.")
+    else:
+        md.append(f"- Rango Común Efectivo: El período válido para análisis de correlación es de **{common_start.date()}** a **{common_end.date()}**.")
+
+```
+
+4. Análisis de Correlación (Histórica):
+
+- Calcula la matriz de correlación de los retornos logarítmicos.
+- Este análisis se ejecuta exclusivamente sobre el "Rango Común Efectivo" calculado en el paso anterior, garantizando que la comparación sea justa y estadísticamente válida.
+- Muestra la matriz de correlación (ej. `AAPL vs MSFT: 0.612`).
+- Extrae automáticamente insights clave, como el par de activos con la máxima correlación (los que más se mueven juntos) y la mínima correlación (los que más diversifican).
+`Código completo en series.py`

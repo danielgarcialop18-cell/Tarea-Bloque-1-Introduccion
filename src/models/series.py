@@ -3,17 +3,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import pandas as pd
 from typing import Optional, Dict, List, Union
-import numpy as np  # <--- AÑADIDO
+import numpy as np 
+from tabulate import tabulate
 
 from src.plots.plots import plot_prices, plot_monte_carlo
 
 
 @dataclass
 class PriceSeries:
-    """
-    Representa la serie histórica normalizada de precios para UN activo.
-    Usa un dataclass para guardar los datos de forma coherente.
-    """
     
     # 1. CAMPOS QUE PASAMOS AL CREARLA
     ticker: str
@@ -311,7 +308,7 @@ class Portfolio:
 
     # --- ¡¡¡ --- MÉTODO DE REPORTE SOLICITADO --- !!! ---
     
-    def report(self) -> str:
+    def report(self):
     
         if not self.assets:
             return "# Reporte de Cartera\n\nCartera vacía."

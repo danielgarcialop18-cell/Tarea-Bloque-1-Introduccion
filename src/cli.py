@@ -322,7 +322,6 @@ def main():
         print("="*50)
 
 
-    # ---------- Persistencia opcional (Sin cambios) ----------
     if args.to_csv:
         out.to_csv(args.to_csv, index=True)
         print(f"💾 Guardado CSV combinado en: {args.to_csv}")
