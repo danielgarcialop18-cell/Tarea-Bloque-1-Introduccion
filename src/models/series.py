@@ -428,3 +428,68 @@ class Portfolio:
                 md.append(f"\n> ⚠️ Error Inesperado: No se pudo generar el análisis de correlación: {e}")
 
         return "\n".join(md)
+    
+
+    def plots_report(self):
+        """
+        Genera y muestra una serie de gráficos útiles para
+        analizar la cartera.
+        """
+        print("Generando gráficos de análisis de cartera...")
+        
+        if not self.assets:
+            print("⛔ Cartera vacía. No se pueden generar gráficos.")
+            return
+
+        # --- Gráfico 1: Tarta de Pesos ---
+        if self.weights:
+            plot_weights_pie_chart(self.weights, f"Composición de la Cartera '{self.name}'")
+        else:
+            print("ℹ️ No hay pesos definidos, omitiendo gráfico de composición de cartera.")
+
+        # --- Preparación para gráficos de precios/correlación ---
+        price_assets = [s for s in self.assets.values() if s.main_col == 'close' and not s.data.empty]
+        
+        if len(price_assets) < 1:
+            print("⛔ No hay activos de precios ('close') con datos para los gráficos de rendimiento o correlación.")
+            return
+
+        # 1. Crear DataFrame de precios de cierre
+        try:
+            close_prices = {}
+            for series in price_assets:
+                close_prices[series.ticker] = series.data['close']
+            df_closes = pd.concat(close_prices, axis=1, keys=close_prices.keys())
+
+            # 2. Encontrar rango común
+            common_start = max(s.start_date for s in price_assets)
+            common_end = min(s.end_date for s in price_assets)
+            
+            if common_start >= common_end:
+                 print(f"⚠️ ¡Advertencia! No existe un rango común para los activos. No se pueden generar gráficos de rendimiento o correlación.")
+                 return
+            
+            # --- ¡¡ARREGLO DE ADVERTENCIA!! ---
+            # df_closes_common = df_closes.loc[common_start:common_end].fillna(method='ffill').dropna(axis=0) # <-- Línea antigua
+            df_closes_common = df_closes.loc[common_start:common_end].ffill().dropna(axis=0) # <-- Línea nueva
+
+            if df_closes_common.empty:
+                print("⚠️ ¡Advertencia! El DataFrame de rango común está vacío. Omitiendo gráficos.")
+                return
+
+            # --- Gráfico 2: Rendimiento Normalizado ---
+            plot_normalized_prices(df_closes_common)
+            
+            # --- Gráfico 3: Mapa de Correlación ---
+            if len(price_assets) >= 2:
+                log_returns = np.log(1 + df_closes_common.pct_change()).dropna()
+                if not log_returns.empty:
+                    corr_matrix = log_returns.corr()
+                    plot_correlation_heatmap(corr_matrix)
+                else:
+                    print("ℹ️ Datos insuficientes para calcular la matriz de correlación.")
+            else:
+                print("ℹ️ Se necesitan al menos 2 activos para un mapa de correlación.")
+
+        except Exception as e:
+            print(f"⚠️ Error Inesperado al generar gráficos de precios: {e}")

@@ -125,6 +125,9 @@ def main():
     p.add_argument("--report", action="store_true", 
                    help="Genera y muestra un informe detallado de la cartera en Markdown")
     
+    p.add_argument("--show-plots", action="store_true", 
+                   help="Genera y muestra gráficos de análisis de la cartera")
+    
     args = p.parse_args()
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
@@ -329,6 +332,31 @@ def main():
         out.to_json(args.to_json, orient="records", date_format="iso")
         print(f"💾 Guardado JSON combinado en: {args.to_json}")
 
+# --- ¡¡¡ --- NUEVA SECCIÓN DE GRÁFICOS --- !!! ---
+    if args.show_plots:
+        print("\n" + "="*50)
+        print(" GENERANDO GRÁFICOS DE CARTERA ".center(50, "="))
+        print("="*50 + "\n")
+        
+        try:
+            # ¡Llamamos al nuevo método!
+            cartera.plots_report()
+        except Exception as e:
+            print(f"⚠️ Error al generar los gráficos: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        print("\n" + "="*50)
+        print(" FIN DE LOS GRÁFICOS ".center(50, "="))
+        print("="*50)
+
+
+    if args.to_csv:
+        out.to_csv(args.to_csv, index=True)
+        print(f"💾 Guardado CSV combinado en: {args.to_csv}")
+    if args.to_json:
+        out.to_json(args.to_json, orient="records", date_format="iso")
+        print(f"💾 Guardado JSON combinado en: {args.to_json}")
 
 if __name__ == "__main__":
     main()
