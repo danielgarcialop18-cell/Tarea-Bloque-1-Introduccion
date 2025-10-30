@@ -121,6 +121,10 @@ def main():
     p.add_argument("--negative-prices", action="store_true",
                    help="Elimina precios <= 0 reemplazando con NaN (Recomendado)")
     
+    # --- ARGUMENTO DE REPORTE ---
+    p.add_argument("--report", action="store_true", 
+                   help="Genera y muestra un informe detallado de la cartera en Markdown")
+    
     args = p.parse_args()
 
     symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
@@ -297,6 +301,25 @@ def main():
                     print(f"⚠️ Error en simulación de {ticker}: {e}")
         
         print("\n" + "="*40)
+
+# --- ¡¡¡ --- NUEVA SECCIÓN DE REPORTE --- !!! ---
+    if args.report:
+        print("\n" + "="*50)
+        print(" GENERANDO REPORTE DE CARTERA ".center(50, "="))
+        print("="*50 + "\n")
+        
+        try:
+            # ¡Llamamos al nuevo método!
+            informe_md = cartera.report()
+            print(informe_md)
+        except Exception as e:
+            print(f"⚠️ Error al generar el informe: {e}")
+            import traceback
+            traceback.print_exc() # Imprime más detalles si falla
+        
+        print("\n" + "="*50)
+        print(" FIN DEL REPORTE ".center(50, "="))
+        print("="*50)
 
 
     # ---------- Persistencia opcional (Sin cambios) ----------
