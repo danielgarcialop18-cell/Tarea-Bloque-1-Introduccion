@@ -656,4 +656,6 @@ if all_start_dates and all_end_dates:
 - Este análisis se ejecuta exclusivamente sobre el "Rango Común Efectivo" calculado en el paso anterior, garantizando que la comparación sea justa y estadísticamente válida.
 - Muestra la matriz de correlación (ej. `AAPL vs MSFT: 0.612`).
 - Extrae automáticamente insights clave, como el par de activos con la máxima correlación (los que más se mueven juntos) y la mínima correlación (los que más diversifican).
-`Código completo en series.py`
+```bash
+Código completo en series.py
+```
