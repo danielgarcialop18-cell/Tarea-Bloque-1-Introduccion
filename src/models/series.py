@@ -34,11 +34,6 @@ class PriceSeries:
     std_dev_value: Optional[float] = field(init=False, default=float('nan'))
 
     def __post_init__(self):
-        """
-        Esta función especial se ejecuta AUTOMÁTICAMENTE
-        justo después del __init__ que ha creado el dataclass.
-        
-        """
         if not self.data.empty:
             # --- Cálculo de fechas (existente) ---
             self.start_date = self.data.index.min()
@@ -67,15 +62,12 @@ class PriceSeries:
             self.main_col = None
 
     def __len__(self) -> int:
-        """Devuelve el número de registros (filas) del DataFrame."""
         return len(self.data)
 
-    def get_summary(self) -> str: # <--- CAMBIO: Actualizado para mostrar estadísticas
-        """Devuelve un resumen simple de la serie."""
+    def get_summary(self) -> str: 
         if self.data.empty:
             return f"Serie: {self.ticker} ({self.source}) - (Vacía)"
         else:
-            # Formateamos las estadísticas para que se vean bien
             stats_str = ""
             if self.main_col:
                 stats_str = f"| Col: {self.main_col} (Media: {self.mean_value:,.2f}, Std: {self.std_dev_value:,.2f})"
@@ -84,13 +76,9 @@ class PriceSeries:
                     f"Rango: {self.start_date.date()} a {self.end_date.date()} | "
                     f"Registros: {len(self)} {stats_str}")
 
-    # --- NUEVOS MÉTODOS ESTADÍSTICOS (OPCIONALES) ---
+    # --- NUEVOS MÉTODOS ESTADÍSTICOS ---
 
     def get_daily_returns(self, column: str = 'close'):
-        """
-        Calcula los retornos diarios (cambio porcentual) de una columna.
-        Por defecto, usa la columna 'close'.
-        """
         if column in self.data.columns:
             return self.data[column].pct_change()
         
@@ -98,9 +86,6 @@ class PriceSeries:
         return None
 
     def calculate_sma(self, window_days: int = 20):
-        """
-        Calcula la Media Móvil Simple (SMA) de la columna principal.
-        """
         if self.main_col and len(self.data) >= window_days:
             return self.data[self.main_col].rolling(window=window_days).mean()
         
@@ -111,7 +96,6 @@ class PriceSeries:
         return None
 
     def get_min_max(self):
-        """Devuelve el mínimo y máximo (precio y fecha) de la columna principal."""
         if self.main_col:
             min_val = self.data[self.main_col].min()
             min_date = self.data[self.main_col].idxmin()
@@ -125,12 +109,8 @@ class PriceSeries:
             }
         return None
 
-    # --- ¡NUEVO MÉTODO! LÓGICA DE MONTE CARLO ---
+    # --- MÉTODO DE MONTE CARLO PARA ACTIVOS ---
     def run_monte_carlo(self, days: int, simulations: int):
-        """
-        Ejecuta una simulación de Monte Carlo para esta serie.
-        Utiliza el Movimiento Geométrico Browniano (GBM).
-        """
         if self.main_col != 'close' or self.data.empty:
             raise ValueError(f"Simulación solo aplicable a series 'close' con datos. (Activo: {self.ticker})")
 
@@ -182,11 +162,6 @@ class PriceSeries:
     
 # --- METODO DE LIMPIEZA 2: RELLENA LOS NaN CON ffill ---
     def resample_daily(self, fill_method: str = 'ffill'):
-        """
-        Re-muestrea los datos a una frecuencia diaria ('D') para rellenar
-        huecos (como fines de semana o festivos).
-        Modifica el DataFrame interno.
-        """
         if not self.data.empty:
             self.data.index = pd.to_datetime(self.data.index) # me aseguro de que el indice sea un datetime
             self.data = self.data.resample('D').fillna(method=fill_method)
@@ -209,21 +184,14 @@ class PriceSeries:
         return self 
 
 @dataclass
-class Portfolio:
-    """
-    Representa una cartera o colección de PriceSeries (activos).
-    También es un dataclass.
-    """
-    name: str # El nombre de la cartera, ej: "Mi Cartera"
+class Portfolio: # Es una cartera, es decir, una coleccion de activos (PriceSeries)
+    name: str # El nombre de la cartera
     
     assets: Dict[str, PriceSeries] = field(default_factory=dict)
     
     weights: Optional[Dict[str, float]] = None
 
     def add_series(self, series: PriceSeries):
-        """
-        Método para añadir un objeto PriceSeries a la cartera.
-        """
         if not isinstance(series, PriceSeries):
             print(f"Error: Solo se pueden añadir objetos PriceSeries a la cartera.")
             return
@@ -233,19 +201,13 @@ class Portfolio:
 
     @property
     def tickers(self):
-        """Devuelve la lista de tickers que hay en la cartera."""
-        return list(self.assets.keys())
+        return list(self.assets.keys()) # me devuelve una lista de los tickers que hay en la cartera
 
     def __len__(self):
-        """Devuelve cuántos activos (series) hay en la cartera."""
-        return len(self.assets)
+        return len(self.assets) # me dice el numeron de activos de la cartera
 
-    # --- ¡NUEVO MÉTODO! LÓGICA DE MONTE CARLO ---
+    # --- MONTE CARLO PARA CARTERAS ---
     def run_monte_carlo(self, days: int, simulations: int):
-        """
-        Ejecuta una simulación de Monte Carlo para la cartera completa,
-        preservando la CORRELACIÓN entre activos.
-        """
         if not self.assets:
             raise ValueError("La cartera no tiene activos.")
         if self.weights is None:
@@ -303,7 +265,7 @@ class Portfolio:
 
         return portfolio_paths
 
-    # --- ¡NUEVO MÉTODO! VISUALIZACIÓN ---
+    # --- VISUALIZACIÓN ---
     def plot_simulation(self, paths: np.ndarray, title: str):
         """
         Llama a la función de ploteo para mostrar los resultados
@@ -312,8 +274,7 @@ class Portfolio:
         print(f"Mostrando gráfico para Cartera '{self.name}'...")
         plot_monte_carlo(paths, title)
 
-    # --- ¡¡¡ --- MÉTODO DE REPORTE SOLICITADO --- !!! ---
-    
+    # --- REPORTE ---
     def report(self):
     
         if not self.assets:

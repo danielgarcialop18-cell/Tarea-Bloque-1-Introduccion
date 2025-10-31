@@ -21,9 +21,7 @@ class Normalizer:
         df["date"] = pd.to_datetime(df["date"])
         return df.set_index("date")
 
-    # ----------------------------
-    # OHLCV: AlphaVantage
-    # ----------------------------
+    # --- OHLCV: AlphaVantage ---
     def normalize_alphavantage_daily(self, raw: dict, ticker: str) -> pd.DataFrame:
         # Busca "Time Series (Daily)"
         ts = None
@@ -48,9 +46,7 @@ class Normalizer:
             })
         return self._finalize_ohlcv(out)
 
-    # ----------------------------
-    # OHLCV: MarketStack
-    # ----------------------------
+    # --- OHLCV: MarketStack ---
     def normalize_marketstack_eod(self, raw: dict) -> pd.DataFrame:
         data = raw.get("data", [])
         out = []
@@ -67,9 +63,7 @@ class Normalizer:
             })
         return self._finalize_ohlcv(out)
 
-    # ----------------------------
-    # OHLCV: TwelveData
-    # ----------------------------
+    # --- OHLCV: TwelveData ---
     def normalize_twelvedata_timeseries(self, raw: dict, ticker: str) -> pd.DataFrame:
         vals = raw.get("values", [])
         out = []
@@ -86,9 +80,9 @@ class Normalizer:
             })
         return self._finalize_ohlcv(out)
 
-    # ==========================================================
-    #              INDICADORES (RSI) AÑADIDOS
-    # ==========================================================
+
+    # --- INDICADORES (RSI) ---
+    
     def normalize_alphavantage_rsi(self, raw: dict, ticker: str) -> pd.DataFrame:
         """
         AlphaVantage: el RSI viene bajo la clave 'Technical Analysis: RSI'.
@@ -130,9 +124,7 @@ class Normalizer:
         df["date"] = pd.to_datetime(df["date"])
         return df.set_index("date")
 
-    # ----------------------------
-    # Helper opcional: unir indicador a precios por fecha
-    # ----------------------------
+    # Une los precios por fecha
     def attach_indicator(self, prices_df: pd.DataFrame, ind_df: pd.DataFrame, col_name: str = "rsi") -> pd.DataFrame:
         """
         Hace un merge por índice fecha y añade la columna del indicador al DF de precios.

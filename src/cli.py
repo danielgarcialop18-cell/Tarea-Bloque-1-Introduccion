@@ -2,17 +2,14 @@ import argparse
 import os
 import sys
 import pandas as pd
-import numpy as np  # <--- Asegúrate de tener este import
+import numpy as np 
 
 from .extractors.alphavantage_extractor import AlphaVantageExtractor
 from .extractors.marketstack_extractor import MarketStackExtractor
 from .extractors.twelvedata_extractor import TwelveDataExtractor
 from .extractors.runner import fetch_many
 from .normalization.normalizer import Normalizer
-# Importa las nuevas clases del modelo que creaste
 from .models.series import PriceSeries, Portfolio
-
-# --- ¡El simulador ya no se importa desde aquí! ---
 
 
 def _get_extractor(provider: str, apikey: str):
@@ -47,7 +44,7 @@ def _concat_or_single(dfs: list[pd.DataFrame]) -> pd.DataFrame:
     return pd.concat(dfs).sort_index()
 
 
-# --- FUNCIÓN DE AYUDA PARA IMPRIMIR RESULTADOS DE MONTE CARLO ---
+# --- FUNCIÓN PARA IMPRIMIR RESULTADOS DE MONTE CARLO ---
 def _print_mc_results(paths: np.ndarray, name: str):
     """Imprime estadísticas de un resultado de Monte Carlo."""
     if paths is None or paths.size == 0:
@@ -74,7 +71,7 @@ def _print_mc_results(paths: np.ndarray, name: str):
 def main():
     p = argparse.ArgumentParser(description="Extractor multi-API de OHLCV y RSI (formato estandarizado)")
     
-    # --- ARGUMENTOS ORIGINALES (LOS QUE FALTABAN) ---
+    # --- ARGUMENTOS INICIALES ---
     p.add_argument("--provider", choices=["alpha","marketstack","twelvedata"], required=True,
                    help="Proveedor de datos")
     p.add_argument("--symbols", required=True,
@@ -125,7 +122,7 @@ def main():
     p.add_argument("--report", action="store_true", 
                    help="Genera y muestra un informe detallado de la cartera en Markdown")
 
-    # --- ¡¡¡ --- NUEVO ARGUMENTO DE GRÁFICOS --- !!! ---
+    # --- ARGUMENTO DE GRÁFICOS ---
     p.add_argument("--show-plots", action="store_true", 
                    help="Genera y muestra gráficos de análisis de la cartera")
     
@@ -138,16 +135,14 @@ def main():
     
     out_by_symbol: dict[str, pd.DataFrame] = {} 
 
-    # --- (AQUÍ VA TODA LA LÓGICA DE DESCARGA (HISTORY / INDICATOR) ... ) ---
-    # --- ( ... ESA PARTE NO CAMBIA ... ) ---
-    # ---------- HISTÓRICO (OHLCV) ----------
+    # --- PRECIOS (OHLCV) ---
     if args.datatype == "history":
         fetch_one = lambda s: ex.history(s, start=args.start, end=args.end)
         if args.provider == "alpha":
             normalize_one = lambda raw, s: norm.normalize_alphavantage_daily(raw, s)
         elif args.provider == "marketstack":
             normalize_one = lambda raw, s: norm.normalize_marketstack_eod(raw)
-        else:  # twelvedata
+        else:  
             normalize_one = lambda raw, s: norm.normalize_twelvedata_timeseries(raw, s)
 
         if args.max_workers == 1:
@@ -161,7 +156,7 @@ def main():
         else:
             out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
 
-    # ---------- INDICADORES (RSI) ----------
+    # --- INDICADORES (RSI) ---
     else:
         if args.indicator != "rsi":
             raise SystemExit("Por ahora solo se implementa RSI en modo indicador.")
@@ -172,7 +167,7 @@ def main():
             fetch_one = lambda s: ex.rsi(s, time_period=args.time_period, interval="1day")
             normalize_one = lambda raw, s: norm.normalize_twelvedata_rsi(raw, s)
         else:
-            print("⚠️ MarketStack no ofrece RSI gratuito; omitiendo.", file=sys.stderr)
+            print("⚠️ MarketStack no ofrece RSI gratuito.", file=sys.stderr)
             fetch_one = lambda s: {}
             normalize_one = lambda raw, s: pd.DataFrame()
 
@@ -188,7 +183,7 @@ def main():
             out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
     
     
-    # ---------- CREACIÓN DE OBJETOS Portfolio y PriceSeries ---------- 
+    # --- Portfolio y PriceSeries --- 
     portfolio_name = f"Cartera CLI ({args.provider} - {args.datatype})"
     cartera = Portfolio(name=portfolio_name)
     
@@ -211,7 +206,7 @@ def main():
     out = _concat_or_single(list(out_by_symbol.values()))
 
 
-    # ---------- Salida por pantalla (Modificada) ---------- #
+    # --- Salida por pantalla --- 
     if not cartera.assets: 
         print("\n⛔ No hay datos para mostrar.")
     else:
@@ -237,10 +232,7 @@ def main():
         print("\n" + "="*40)
 
 
-    # --- ¡¡¡ --- ARREGLO PARA EL GRÁFICO DE TARTA --- !!! ---
-    # Movemos la lógica de asignación de pesos AFUERA del 'if args.monte_carlo'
-    # para que los pesos se asignen si se pasan, y así los gráficos
-    # y el reporte puedan usarlos.
+    # --- SOLUCIÓN PARA EL GRÁFICO DE TARTA ---
     
     if args.mc_weights and cartera.assets:
         pesos_cartera = None
@@ -262,12 +254,11 @@ def main():
             peso_igual = 1.0 / len(cartera)
             pesos_cartera = {ticker: peso_igual for ticker in tickers_cartera}
         
-        # Asignamos los pesos a la cartera
         cartera.weights = pesos_cartera
         print(f"Pesos de cartera asignados: {cartera.weights}")
     
 
-    # ---------- LÓGICA DE SIMULACIÓN MONTE CARLO (Refactorizada) ----------
+    # --- SIMULACIÓN MONTE CARLO ---
     
     if args.monte_carlo and args.monte_carlo > 0:
         print("\n" + "="*40)
@@ -275,12 +266,10 @@ def main():
         print(f"   Simulaciones: {args.monte_carlo} | Días a futuro: {args.mc_days}")
         print("="*40)
         
-        # --- SIMULACIÓN DE CARTERA COMPLETA ---
+        # --- SIMULACIÓN DE LA CARTERA ---
         if args.mc_portfolio:
             if not cartera.assets:
                 print("⛔ No hay activos en la cartera para simular.")
-            # --- ¡¡CAMBIO AQUÍ!! ---
-            # La lógica de pesos ya se ejecutó, solo comprobamos si existen
             elif not cartera.weights:
                 print("⛔ No se pueden simular pesos de cartera porque no se definieron (usa --mc-weights).")
             else:
@@ -295,7 +284,7 @@ def main():
                 except Exception as e:
                     print(f"⚠️ Error fatal en simulación de cartera: {e}")
 
-        # --- SIMULACIÓN DE ACTIVOS INDIVIDUALES ---
+        # --- SIMULACIÓN DE ACTIVOS INDIVIDUALMENTE ---
         else:
             print("Simulando activos individuales...")
             for ticker, series in cartera.assets.items():
@@ -315,33 +304,31 @@ def main():
         
         print("\n" + "="*40)
 
-    # --- ¡¡¡ --- SECCIÓN DE REPORTE (Existente) --- !!! ---
+    # --- REPORTE ---
     if args.report:
         print("\n" + "="*50)
         print(" GENERANDO REPORTE DE CARTERA ".center(50, "="))
         print("="*50 + "\n")
         
         try:
-            # ¡Llamamos al nuevo método!
             informe_md = cartera.report()
             print(informe_md)
         except Exception as e:
             print(f"⚠️ Error al generar el informe: {e}")
             import traceback
-            traceback.print_exc() # Imprime más detalles si falla
+            traceback.print_exc() 
         
         print("\n" + "="*50)
         print(" FIN DEL REPORTE ".center(50, "="))
         print("="*50)
 
-    # --- ¡¡¡ --- NUEVA SECCIÓN DE GRÁFICOS --- !!! ---
+    # --- GRÁFICOS ---
     if args.show_plots:
         print("\n" + "="*50)
         print(" GENERANDO GRÁFICOS DE CARTERA ".center(50, "="))
         print("="*50 + "\n")
         
         try:
-            # ¡Llamamos al nuevo método!
             cartera.plots_report()
         except Exception as e:
             print(f"⚠️ Error al generar los gráficos: {e}")
