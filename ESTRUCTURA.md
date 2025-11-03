@@ -18,7 +18,6 @@ classDiagram
         +history(ticker, start, end)
         +rsi(symbol)
     }
-
     BaseExtractor <|-- AlphaVantageExtractor : hereda
     BaseExtractor <|-- MarketStackExtractor : hereda
     BaseExtractor <|-- TwelveDataExtractor : hereda
@@ -31,7 +30,6 @@ classDiagram
         +run_monte_carlo()
         +plot_simulation()
     }
-
     class Portfolio {
         +name: str
         +assets: Dict
@@ -40,8 +38,6 @@ classDiagram
         +report()
         +plots_report()
     }
-
-    %% Portfolio "contiene" múltiples PriceSeries
     Portfolio "1" o-- "*" PriceSeries : Contiene
 
 
@@ -53,13 +49,12 @@ classDiagram
     }
 
     
-    %% --- Módulos de Utilidad (Funciones) ---
-    component runner_py {
+    %% --- Módulos de Utilidad (representados como clases) ---
+    class runner_py {
         <<Utilidad>>
         +fetch_many()
     }
-
-    component plots_py {
+    class plots_py {
          <<Utilidad>>
          +plot_monte_carlo()
          +plot_correlation_heatmap()
@@ -67,12 +62,13 @@ classDiagram
     }
 
 
-    %% --- Punto de Entrada y Dependencias ---
-    component cli_main {
+    %% --- Punto de Entrada (representado como clase) ---
+    class cli_main {
         <<Punto de Entrada>>
         +main()
     }
 
+    %% --- Dependencias ---
     cli_main ..> Portfolio : Crea y usa
     cli_main ..> PriceSeries : Crea y usa
     cli_main ..> Normalizer : Usa
@@ -81,4 +77,4 @@ classDiagram
 
     PriceSeries ..> plots_py : Usa (para plot_simulation)
     Portfolio ..> plots_py : Usa (para plots_report)
-```
+    ```
