@@ -8,15 +8,8 @@ def plot_prices(df):
     plt.title("Evolución del precio")
     plt.show()
 
-# --- AÑADE TODA ESTA NUEVA FUNCIÓN ---
 
 def plot_monte_carlo(simulation_paths: np.ndarray, title: str):
-    """
-    Grafica las trayectorias de una simulación Monte Carlo.
-    
-    Parámetros:
-    simulation_paths: Array de (días, simulaciones)
-    """
     if simulation_paths is None or simulation_paths.size == 0:
         print("No hay datos que graficar.")
         return
@@ -83,19 +76,16 @@ def plot_correlation_heatmap(corr_matrix: pd.DataFrame):
     plt.figure(figsize=(10, 7))
     sns.heatmap(
         corr_matrix, 
-        annot=True,     # Mostrar los números dentro de las celdas
-        cmap='coolwarm',  # Esquema de color (rojo=alto, azul=bajo)
-        fmt=".2f",        # Formato de los números (2 decimales)
-        linewidths=.5     # Líneas de separación
+        annot=True,     
+        cmap='coolwarm',  
+        fmt=".2f",        
+        linewidths=.5     
     )
     plt.title("Mapa de Calor de Correlación (Retornos Logarítmicos)")
     plt.show()
 
 
 def plot_weights_pie_chart(weights: dict, title: str):
-    """
-    Grafica un gráfico de tarta (pie chart) con los pesos de la cartera.
-    """
     if not weights:
         print("No hay pesos definidos para el gráfico de tarta.")
         return
@@ -108,11 +98,10 @@ def plot_weights_pie_chart(weights: dict, title: str):
     plt.figure(figsize=(8, 8))
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, pctdistance=0.85)
     
-    # Dibuja un círculo en el centro para hacerlo un "Donut Chart" (más moderno)
     centre_circle = plt.Circle((0,0),0.70,fc='white')
     fig = plt.gcf()
     fig.gca().add_artist(centre_circle)
     
     plt.title(title)
-    plt.axis('equal')  # Asegura que la tarta sea circular
+    plt.axis('equal') 
     plt.show()
