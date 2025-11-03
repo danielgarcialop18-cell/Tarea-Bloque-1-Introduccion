@@ -732,3 +732,18 @@ python -m src.cli --provider alpha --symbols "AAPL,MSFT" --datatype "history" --
 ```bash
 python -m src.cli --provider twelvedata --symbols "AAPL,MSFT,GOOG" --datatype "history" --clean-na --resample-daily --negative-prices --show-plots --mc-weights "0.333,0.333,0.334"
 ```  
+
+## APIKEY
+Para que esta herramienta funcione, necesitarás tus propias API keys de los proveedores de datos.
+
+Este programa está diseñado para leer las claves de las **variables de entorno** de tu sistema.
+
+Antes de ejecutar el script, debes configurar estas variables en tu terminal.
+
+**En Windows (usando `setx`):**
+(Recuerda reiniciar la terminal después de usar `setx`)
+```bash
+setx ALPHAVANTAGE_API_KEY "TU_CLAVE_DE_ALPHA_VANTAGE"
+setx MARKETSTACK_API_KEY "TU_CLAVE_DE_MARKETSTACK"
+setx TWELVEDATA_API_KEY "TU_CLAVE_DE_TWELVE_DATA"
+```
