@@ -152,7 +152,7 @@ La lógica de ejecución de este sistema es:
     - Cuando una descarga (`fetch_one`) finaliza, obtiene el resultado (`raw json`).
     - Inmediatamente, pasa ese `raw json` a la función `normalize_one` para convertirlo en un `DataFrame`.
     - Guarda el `DataFrame` en un diccionario de resultados (ej. `results["AAPL"] = df_aapl`).
-    - Imprime un mensaje de éxito (✅).
+    - Imprime un mensaje de éxito.
 4. Si cualquiera de los pasos anteriores (descarga o normalización) falla para un símbolo, el bloque `except` lo captura, guarda un `DataFrame` vacío para ese símbolo y muestra un mensaje de error sin detener el resto de las descargas.
 5. Una vez que todas las tareas (exitosas o fallidas) han terminado, la función devuelve el diccionario `results` completo.
 
@@ -699,3 +699,36 @@ if all_start_dates and all_end_dates:
 ```bash
 Código completo en series.py
 ```
+
+# cli.py
+De cara a como usar este programa, escribiendo en el terminal `python -m src.cli --help` nos pone una lista de todos los comandos posibles para las distintas operaciones que podemos usar, aun así, voy a dejar un ejemplo de las series de comandos a escribir para hacer distintas operaciones.
+
+1. Descarga Básica de Históricos: Descargar precios de Apple y Google desde AlphaVantage y guardarlos en CSV.
+```bash
+python -m src.cli --provider alpha --symbols "AAPL,GOOG" --to-csv "datos_hist.csv"
+```
+
+2. Obtener el RSI: Obtener el RSI de 14 días para el EUR/USD desde TwelveData y mostrarlo por pantalla.
+```bash
+python -m src.cli --provider twelvedata --symbols "EUR/USD" --datatype "indicator" --indicator "rsi" --time_period 14
+```
+
+3. Análisis y limpieza: Obtener datos de Microsoft, limpiar NaNs, remuestrear a diario y mostrar la SMA de 50 días.
+```bash
+python -m src.cli --provider marketstack --symbols "MSFT" --datatype "history" --clean-na --resample-daily --sma 50
+```
+
+4. Simulación de Monte Carlo de un activo: Ejecutar una simulación Monte Carlo de 1000 caminos para Tesla (TSLA) a 1 año vista y mostrar el gráfico.
+```bash
+python -m src.cli --provider alpha --symbols "TSLA" --datatype "history" --clean-na --monte-carlo 1000 --mc-days 252 --mc-plot
+```
+
+5. Simulación de Monte Carlo de una cartera y reporte: Simular una cartera 60/40 (AAPL/MSFT) y generar el informe completo en Markdown.
+```bash
+python -m src.cli --provider alpha --symbols "AAPL,MSFT" --datatype "history" --clean-na --resample-daily --monte-carlo 1000 --mc-portfolio --mc-weights "0.6,0.4" --report
+```
+
+6. Reporte gráfico completo: Descargar 3 activos, limpiarlos y generar los gráficos.
+```bash
+python -m src.cli --provider twelvedata --symbols "AAPL,MSFT,GOOG" --datatype "history" --clean-na --resample-daily --negative-prices --show-plots
+```  
