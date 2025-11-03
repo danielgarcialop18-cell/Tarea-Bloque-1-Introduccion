@@ -151,7 +151,7 @@ def main():
                     raw = fetch_one(sym)
                     out_by_symbol[sym] = normalize_one(raw, sym)
                 except Exception as e:
-                    print(f"⚠️ Error con {sym}: {e}", file=sys.stderr)
+                    print(f"Error con {sym}: {e}", file=sys.stderr)
                     out_by_symbol[sym] = pd.DataFrame()
         else:
             out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
@@ -177,7 +177,7 @@ def main():
                     raw = fetch_one(sym)
                     out_by_symbol[sym] = normalize_one(raw, sym)
                 except Exception as e:
-                    print(f"⚠️ Error con {sym}: {e}", file=sys.stderr)
+                    print(f"Error con {sym}: {e}", file=sys.stderr)
                     out_by_symbol[sym] = pd.DataFrame()
         else:
             out_by_symbol = fetch_many(symbols, fetch_one, normalize_one, max_workers=args.max_workers)
@@ -211,7 +211,7 @@ def main():
         print("\n No hay datos para mostrar.")
     else:
         print("\n" + "="*40)
-        print(f"📊 Resumen de la Cartera: '{cartera.name}'")
+        print(f"Resumen de la Cartera: '{cartera.name}'")
         print(f"Total de activos: {len(cartera)}")
         print("="*40)
 
@@ -247,7 +247,7 @@ def main():
                 pesos_lista = [p / s for p in pesos_lista]
             pesos_cartera = {ticker: peso for ticker, peso in zip(tickers_cartera, pesos_lista)}
         except Exception as e:
-            print(f"⚠️ Error al parsear pesos: {e}. Usando pesos iguales.")
+            print(f"Error al parsear pesos: {e}. Usando pesos iguales.")
         
         if pesos_cartera is None:
             print(f"Usando pesos iguales (1/{len(cartera)}) para {len(cartera)} activos.")
@@ -262,16 +262,16 @@ def main():
     
     if args.monte_carlo and args.monte_carlo > 0:
         print("\n" + "="*40)
-        print(f"🔬 Ejecutando Simulación Monte Carlo")
+        print(f"Ejecutando Simulación Monte Carlo")
         print(f"   Simulaciones: {args.monte_carlo} | Días a futuro: {args.mc_days}")
         print("="*40)
         
         # --- SIMULACIÓN DE LA CARTERA ---
         if args.mc_portfolio:
             if not cartera.assets:
-                print("⛔ No hay activos en la cartera para simular.")
+                print("No hay activos en la cartera para simular.")
             elif not cartera.weights:
-                print("⛔ No se pueden simular pesos de cartera porque no se definieron (usa --mc-weights).")
+                print("No se pueden simular pesos de cartera porque no se definieron (usa --mc-weights).")
             else:
                 print(f"Simulando cartera completa. Pesos: {cartera.weights}")
                 try:
@@ -282,7 +282,7 @@ def main():
                         cartera.plot_simulation(paths, f"Simulación Monte Carlo - Cartera '{cartera.name}'")
                         
                 except Exception as e:
-                    print(f"⚠️ Error fatal en simulación de cartera: {e}")
+                    print(f" Error fatal en simulación de cartera: {e}")
 
         # --- SIMULACIÓN DE ACTIVOS INDIVIDUALMENTE ---
         else:
@@ -300,7 +300,7 @@ def main():
                         series.plot_simulation(paths, f"Simulación Monte Carlo - {ticker}")
                         
                 except Exception as e:
-                    print(f"⚠️ Error en simulación de {ticker}: {e}")
+                    print(f" Error en simulación de {ticker}: {e}")
         
         print("\n" + "="*40)
 
@@ -314,7 +314,7 @@ def main():
             informe_md = cartera.report()
             print(informe_md)
         except Exception as e:
-            print(f"⚠️ Error al generar el informe: {e}")
+            print(f" Error al generar el informe: {e}")
             import traceback
             traceback.print_exc() 
         
@@ -342,10 +342,10 @@ def main():
 
     if args.to_csv:
         out.to_csv(args.to_csv, index=True)
-        print(f"💾 Guardado CSV combinado en: {args.to_csv}")
+        print(f" Guardado CSV combinado en: {args.to_csv}")
     if args.to_json:
         out.to_json(args.to_json, orient="records", date_format="iso")
-        print(f"💾 Guardado JSON combinado en: {args.to_json}")
+        print(f" Guardado JSON combinado en: {args.to_json}")
 
 
 if __name__ == "__main__":
