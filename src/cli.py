@@ -167,7 +167,7 @@ def main():
             fetch_one = lambda s: ex.rsi(s, time_period=args.time_period, interval="1day")
             normalize_one = lambda raw, s: norm.normalize_twelvedata_rsi(raw, s)
         else:
-            print("⚠️ MarketStack no ofrece RSI gratuito.", file=sys.stderr)
+            print(" MarketStack no ofrece RSI gratuito.", file=sys.stderr)
             fetch_one = lambda s: {}
             normalize_one = lambda raw, s: pd.DataFrame()
 
@@ -208,7 +208,7 @@ def main():
 
     # --- Salida por pantalla --- 
     if not cartera.assets: 
-        print("\n⛔ No hay datos para mostrar.")
+        print("\n No hay datos para mostrar.")
     else:
         print("\n" + "="*40)
         print(f"📊 Resumen de la Cartera: '{cartera.name}'")
