@@ -730,5 +730,5 @@ python -m src.cli --provider alpha --symbols "AAPL,MSFT" --datatype "history" --
 
 6. Reporte gráfico completo: Descargar 3 activos, limpiarlos y generar los gráficos.
 ```bash
-python -m src.cli --provider twelvedata --symbols "AAPL,MSFT,GOOG" --datatype "history" --clean-na --resample-daily --negative-prices --show-plots
+python -m src.cli --provider twelvedata --symbols "AAPL,MSFT,GOOG" --datatype "history" --clean-na --resample-daily --negative-prices --show-plots --mc-weights "0.333,0.333,0.334"
 ```  

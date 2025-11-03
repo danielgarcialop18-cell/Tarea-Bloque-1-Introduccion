@@ -13,7 +13,6 @@ class Normalizer:
         return dt.replace(tzinfo=None) if dt.tzinfo else dt
 
     def _finalize_ohlcv(self, rows: list[dict]) -> pd.DataFrame:
-        """Convierte lista de dicts OHLCV a DataFrame con index datetime ordenado."""
         df = pd.DataFrame(sorted(rows, key=lambda x: x["date"]))
         if df.empty:
             # DataFrame vacío pero con columnas estándar
@@ -23,7 +22,6 @@ class Normalizer:
 
     # --- OHLCV: AlphaVantage ---
     def normalize_alphavantage_daily(self, raw: dict, ticker: str) -> pd.DataFrame:
-        # Busca "Time Series (Daily)"
         ts = None
         for k in raw.keys():
             if "Time Series" in k:
@@ -91,7 +89,6 @@ class Normalizer:
         block = raw.get("Technical Analysis: RSI", {})
         rows = []
         for d, obj in block.items():
-            # obj típicamente: {"RSI": "56.1234"}
             val_str = obj.get("RSI")
             try:
                 val = float(val_str) if val_str is not None else float("nan")
@@ -105,10 +102,6 @@ class Normalizer:
         return df.set_index("date")
 
     def normalize_twelvedata_rsi(self, raw: dict, ticker: str) -> pd.DataFrame:
-        """
-        TwelveData: el RSI viene en 'values' con pares {'datetime': ..., 'rsi': '...'}.
-        Devuelve DF con índice 'date' y columna 'rsi'.
-        """
         vals = raw.get("values", []) or []
         rows = []
         for r in vals:
@@ -126,10 +119,6 @@ class Normalizer:
 
     # Une los precios por fecha
     def attach_indicator(self, prices_df: pd.DataFrame, ind_df: pd.DataFrame, col_name: str = "rsi") -> pd.DataFrame:
-        """
-        Hace un merge por índice fecha y añade la columna del indicador al DF de precios.
-        Útil para visualizar/guardar todo junto.
-        """
         if prices_df is None or prices_df.empty:
             return ind_df.rename(columns={col_name: f"{col_name}"})
         if ind_df is None or ind_df.empty:
