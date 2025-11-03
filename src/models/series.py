@@ -146,10 +146,6 @@ class PriceSeries:
 
     # --- VISUALIZACIÓN ---
     def plot_simulation(self, paths: np.ndarray, title: str):
-        """
-        Llama a la función de ploteo para mostrar los resultados
-        de la simulación de esta serie.
-        """
         print(f"Mostrando gráfico para {self.ticker}...")
         plot_monte_carlo(paths, title)
 
@@ -267,10 +263,6 @@ class Portfolio: # Es una cartera, es decir, una coleccion de activos (PriceSeri
 
     # --- VISUALIZACIÓN ---
     def plot_simulation(self, paths: np.ndarray, title: str):
-        """
-        Llama a la función de ploteo para mostrar los resultados
-        de la simulación de la cartera.
-        """
         print(f"Mostrando gráfico para Cartera '{self.name}'...")
         plot_monte_carlo(paths, title)
 
@@ -327,7 +319,7 @@ class Portfolio: # Es una cartera, es decir, una coleccion de activos (PriceSeri
             min_end = min(all_end_dates)
             max_end = max(all_end_dates)
             
-            md.append("\n### ⚠️ Advertencias sobre Rango de Fechas")
+            md.append("\n### Advertencias sobre Rango de Fechas")
             if max_start > min_start:
                 md.append(f"- Disparidad de Inicio: Los activos no comienzan en la misma fecha (rango: {min_start.date()} a {max_start.date()}).")
             if min_end < max_end:
@@ -392,16 +384,12 @@ class Portfolio: # Es una cartera, es decir, una coleccion de activos (PriceSeri
                         md.append(f"- Mínima Correlación (o Inversa): `{min_corr[0]}` y `{min_corr[1]}` ({corr_pairs.min():.3f}). Ofrecen la mayor diversificación.")
                     
             except Exception as e:
-                md.append(f"\n> ⚠️ Error Inesperado: No se pudo generar el análisis de correlación: {e}")
+                md.append(f"\n> Error Inesperado: No se pudo generar el análisis de correlación: {e}")
 
         return "\n".join(md)
     
 
     def plots_report(self):
-        """
-        Genera y muestra una serie de gráficos útiles para
-        analizar la cartera.
-        """
         print("Generando gráficos de análisis de cartera...")
         
         if not self.assets:
@@ -412,7 +400,7 @@ class Portfolio: # Es una cartera, es decir, una coleccion de activos (PriceSeri
         if self.weights:
             plot_weights_pie_chart(self.weights, f"Composición de la Cartera '{self.name}'")
         else:
-            print("ℹ️ No hay pesos definidos, omitiendo gráfico de composición de cartera.")
+            print(" No hay pesos definidos, omitiendo gráfico de composición de cartera.")
 
         # --- Preparación para gráficos de precios/correlación ---
         price_assets = [s for s in self.assets.values() if s.main_col == 'close' and not s.data.empty]
@@ -433,15 +421,13 @@ class Portfolio: # Es una cartera, es decir, una coleccion de activos (PriceSeri
             common_end = min(s.end_date for s in price_assets)
             
             if common_start >= common_end:
-                 print(f"⚠️ ¡Advertencia! No existe un rango común para los activos. No se pueden generar gráficos de rendimiento o correlación.")
+                 print(f" ¡Advertencia! No existe un rango común para los activos. No se pueden generar gráficos de rendimiento o correlación.")
                  return
             
-            # --- ¡¡ARREGLO DE ADVERTENCIA!! ---
-            # df_closes_common = df_closes.loc[common_start:common_end].fillna(method='ffill').dropna(axis=0) # <-- Línea antigua
             df_closes_common = df_closes.loc[common_start:common_end].ffill().dropna(axis=0) # <-- Línea nueva
 
             if df_closes_common.empty:
-                print("⚠️ ¡Advertencia! El DataFrame de rango común está vacío. Omitiendo gráficos.")
+                print(" ¡Advertencia! El DataFrame de rango común está vacío. Omitiendo gráficos.")
                 return
 
             # --- Gráfico 2: Rendimiento Normalizado ---
@@ -454,9 +440,9 @@ class Portfolio: # Es una cartera, es decir, una coleccion de activos (PriceSeri
                     corr_matrix = log_returns.corr()
                     plot_correlation_heatmap(corr_matrix)
                 else:
-                    print("ℹ️ Datos insuficientes para calcular la matriz de correlación.")
+                    print(" Datos insuficientes para calcular la matriz de correlación.")
             else:
-                print("ℹ️ Se necesitan al menos 2 activos para un mapa de correlación.")
+                print(" Se necesitan al menos 2 activos para un mapa de correlación.")
 
         except Exception as e:
-            print(f"⚠️ Error Inesperado al generar gráficos de precios: {e}")
+            print(f" Error Inesperado al generar gráficos de precios: {e}")
