@@ -116,6 +116,46 @@ El JSON recibido tiene esta forma:
 }
 ```
 
+## 🏃 Clase Runner.py
+Con esta clase pretendemos evitar las descargas secuenciales, ya que cuando queremos descargar un ticker de varias APIs, la manera más simple de hacerlo es con un bucle, funcionando tal que así:
+```bash
+1. Pedir datos de "AAPL" -> Esperar 1 segundo
+2. Pedir datos de "MSFT" -> Esperar 1 segundo
+3. Pedir datos de "GOOG" -> Esperar 1 segundo
+4. ...
+```
+De esta forma, si se solicitan 100 tickers, tardaría 100 segundos.
+La solución a esto es el paralelismo con hilos, de esta forma en lugar de ir buscando los tickers uno a uno (un hilo), se van a usar varios hilos que van a ir pidiendo diferentes tickers cada uno, trabajando así en paralelo, y por tanto, dando la solución antes que de la forma tradicional. 
+
+### ¿Cómo funciona?
+El módulo expone una única función: `fetch_many`.
+```bash
+def fetch_many(
+    symbols: Iterable[str],
+    fetch_one: Callable[[str], dict],
+    normalize_one: Callable[[dict, str], pd.DataFrame],
+    max_workers: int = 8,
+) -> Dict[str, pd.DataFrame]:
+```
+Esta función es genérica y funciona pidiéndote tres cosas:
+
+- `symbols`: Una lista de los símbolos que quieres descargar (ej. ["AAPL", "MSFT", "GOOG"]).
+- `fetch_one`: Una función que sabe cómo descargar un símbolo. Esta función debe recibir un str (el símbolo) y devolver un dict (el JSON crudo de la API).
+- `normalize_one`: Una función que sabe cómo convertir ese dict crudo en un pd.DataFrame limpio y normalizado.
+- `max_workers`: (Opcional) El número de descargas simultáneas permitidas, es decir, los hilos. Por defecto es 8.
+
+La lógica de ejecución de este sistema es:
+1. Se inicializa un `ThreadPoolExecutor` con el número de hilos (`max_workers`) especificado.
+2. El `runner` recorre la lista `symbols`. Por cada símbolo, envía la tarea `fetch_one(simbolo)` al pool de hilos. Guarda una referencia a esta tarea.
+3. Se procesan los datos a medida que terminan:
+    - El runner utiliza `as_completed` para procesar las tareas a medida que van terminando.
+    - Cuando una descarga (`fetch_one`) finaliza, obtiene el resultado (`raw json`).
+    - Inmediatamente, pasa ese `raw json` a la función `normalize_one` para convertirlo en un `DataFrame`.
+    - Guarda el `DataFrame` en un diccionario de resultados (ej. `results["AAPL"] = df_aapl`).
+    - Imprime un mensaje de éxito (✅).
+4. Si cualquiera de los pasos anteriores (descarga o normalización) falla para un símbolo, el bloque `except` lo captura, guarda un `DataFrame` vacío para ese símbolo y muestra un mensaje de error sin detener el resto de las descargas.
+5. Una vez que todas las tareas (exitosas o fallidas) han terminado, la función devuelve el diccionario `results` completo.
+
 # 🧮 Normalization.py
 
 ## 🎯 Objetivo
