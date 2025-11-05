@@ -734,11 +734,9 @@ python -m src.cli --provider twelvedata --symbols "AAPL,MSFT,GOOG" --datatype "h
 ```  
 
 ## APIKEY
-Para que esta herramienta funcione, necesitarás tus propias API keys de los proveedores de datos.
-
+Para que esta herramienta funcione, es encesario que uses tus propias API keys de los proveedores de datos.
 Este programa está diseñado para leer las claves de las **variables de entorno** de tu sistema.
-
-Antes de ejecutar el script, debes configurar estas variables en tu terminal.
+Antes de ejecutar el script, se deben configurar estas variables en tu terminal.
 
 **En Windows (usando `setx`):**
 (Recuerda reiniciar la terminal después de usar `setx`)
