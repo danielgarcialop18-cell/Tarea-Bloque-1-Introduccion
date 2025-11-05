@@ -331,7 +331,7 @@ def main():
         try:
             cartera.plots_report()
         except Exception as e:
-            print(f"⚠️ Error al generar los gráficos: {e}")
+            print(f"Error al generar los gráficos: {e}")
             import traceback
             traceback.print_exc()
         
